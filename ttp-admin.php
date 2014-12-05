@@ -81,7 +81,8 @@ class Layout{
     */
     //if there is information in the template but not in the information string, then there will be an ommiting of that information
     //until it is otherwise validated through the plugin
-    public function populate_layout($info){
+    public function populate_layout($info,$options=array()){
+        extract($options);
         $templateHolder = "";
         $template = $this->layout;
         if($this->layout == ''){
@@ -101,7 +102,11 @@ class Layout{
             		        $template_double = str_replace('['.$strHolder[0].']', $p->{$strHolder[0]}, $template_double);
             	        }
             	    } else {
-            	        $template_double = str_replace('['.$strHolder[0].']', substr(strip_tags($p->{$strHolder[1]}),0,$strHolder[3]).'...', $template_double);
+            	        if(!isset($title_only) && sizeof($title_only) < 1){
+            	            $template_double = str_replace('['.$strHolder[0].']', substr(strip_tags($p->{$strHolder[1]}),0,$strHolder[3]).'...', $template_double);
+            	        } else {
+            	            $template_double = str_replace('['.$strHolder[0].']', '', $template_double);
+            	        }
             	    }
         	    }
         	    $templateHolder .= $template_double;

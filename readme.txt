@@ -32,4 +32,5 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.1.0.1 - Fixed bug with deletes and fixed issue with rss feed importer for most (if not all) rss feeds
 v.1.0 - Initial Installation

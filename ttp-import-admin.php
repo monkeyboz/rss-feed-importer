@@ -19,10 +19,11 @@
 				$args = array(
 					'post_type'		=>	'feeds',
 					'meta_query'	=>	array(
-						array(
-							'value'	=>	$q,
+							array(
+									'meta_key' => 'tw_rss_feed_options',
+									'value' => $q,
+								)
 						)
-					)
 				);
 				$my_query = new WP_Query( $args );
 				foreach($my_query->posts as $p){
@@ -44,14 +45,6 @@
 			
 			$output = str_replace('"',"'", $output);
 			
-			//$x = new SimpleXmlElement($output);
-			//print_r($x);
-			
-			/*$xml = simplexml_load_string($output);
-			print_r($xml);
-			$xml = json_encode($xml);
-			$xml = json_decode($xml,true);*/
-			
 			if(strlen($feed_category) < 1){
 				$feed_category = 'uncategorized';
 			}
@@ -62,39 +55,100 @@
 			@$dom->loadXML($output);
 			$ypath = new DOMXPath($dom);
 			
-			foreach($ypath->query('//channel/item') as $a){
-				$info = array();
-				$count = 0;
-				
-				$description = array();
-				$j = $ypath->query('//description', $a);
-				foreach($j as $k=>$i){
-					$description[] = $i->nodeValue;
+			$selectOption = array('*/content','*/item');
+			$option = '';
+			foreach($selectOption as $f){
+				if($ypath->query($f)->length > 0){
+				    $option = $f;
 				}
-				
-				$title = array();
-				$j = $ypath->query('//title', $a);
-				foreach($j as $i){
-					$title[] = $i->nodeValue;
-				}
-				
-				$link = array();
-				$j = $ypath->query('//link', $a);
-				foreach($j as $i){
-					$link[] = $i->nodeValue;
-				}
-				
-				foreach($link as $k=>$l){
+			}
+			
+			if($option != ''){
+    			foreach($ypath->query($option) as $a){
+    				$info = array();
+    				$count = 0;
+    				
+    				$description = array();
+    				$j = $ypath->query('//description', $a);
+    				foreach($j as $k=>$i){
+    					$description[] = $i->nodeValue;
+    				}
+    				
+    				$title = array();
+    				$j = $ypath->query('//title', $a);
+    				foreach($j as $i){
+    					$title[] = $i->nodeValue;
+    				}
+    				
+    				$link = array();
+    				$j = $ypath->query('//link', $a);
+    				foreach($j as $i){
+    					$link[] = $i->nodeValue;
+    				}
+    				
+    				foreach($link as $k=>$l){
+    					if(isset($full_content)){
+    				        $content = file_get_contents($link[$k]);
+    				        $dom = new DOMDocument;
+    				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
+    				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
+    	                    @$dom->loadHTML($content);
+    	                    $xpath = new DOMXPath($dom);
+    	                    
+    	                    $x = explode('`',$feed_content);
+    	                    $l = explode('|' ,$x[1]);
+    	                    if(isset($l[1])){
+    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
+    	                            $content = $d->nodeValue;
+    	                        }
+    	                    }
+    	                    $description[$k] = $content;
+    				    }
+    				    
+    				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title[$k].'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
+    				    $p = $wpdb->get_results($query);
+    				    if(sizeof($p) < 1){
+    	    				$post = array(
+    	    						'post_title'=>$title[$k],
+    	    						'post_content'=>str_replace('"', "'", $description[$k].'<br/><br/>Content From: <a href="'.$link[$k].'">'.$ypath->query('//channel/title')->item(0)->nodeValue.'</a><br/>'),
+    	    						'post_category'=>array($feed_category),
+    	    						'post_author'=>1,
+    	    						'post_status'=>'publish',
+    	    						'post_type'=>'feeds'
+    	    					);
+    	    				$id = wp_insert_post($post);
+    	    				if(!isset($full_content)){
+    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
+    	    				} else {
+    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
+    	    				}
+    	    				++$count;
+    				    }
+    				}
+    			}
+			} else {
+			    $xml = simplexml_load_string($output);
+			    
+    			foreach($xml->entry as $x){
+    			    $info = array();
+    				$count = 0;
+    				
+    				$description  = $x->content;
+    				$title = $x->title;
+    				$title = str_replace("//<![CDATA[","",$title);
+                    $title = str_replace("//]]>","",$title);
+    				$link  = $x->id[0];
+    				
 					if(isset($full_content)){
-				        $content = file_get_contents($link[$k]);
+				        $content = file_get_contents($link);
 				        $dom = new DOMDocument;
 				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
 				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
 	                    @$dom->loadHTML($content);
 	                    $xpath = new DOMXPath($dom);
 	                    
-	                    $x = explode('`',$feed_content);
-	                    $l = explode('|' ,$x[1]);
+	                    $xi = explode('`',$feed_content);
+	                    $l = explode('|' ,$xi[1]);
 	                    if(isset($l[1])){
 	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
 	                            $content = $d->nodeValue;
@@ -103,29 +157,28 @@
 	                    $description[$k] = $content;
 				    }
 				    
-				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title[$k].'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
+				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title.'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
 				    $p = $wpdb->get_results($query);
 				    if(sizeof($p) < 1){
 	    				$post = array(
-	    						'post_title'=>$title[$k],
-	    						'post_content'=>str_replace('"', "'", $description[$k].'<br/><br/>Content From: <a href="'.$link[$k].'">'.$ypath->query('//channel/title')->item(0)->nodeValue.'</a><br/>'),
+	    						'post_title'=>$title,
+	    						'post_content'=>str_replace('"', "'", $description.'<br/><br/>Content From: <a href="'.$link.'">'.$x.'</a><br/>'),
 	    						'post_category'=>array($feed_category),
 	    						'post_author'=>1,
 	    						'post_status'=>'publish',
 	    						'post_type'=>'feeds'
 	    					);
 	    				$id = wp_insert_post($post);
-	    				if(isset($full_content)){
+	    				if(!isset($full_content)){
 	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
 	    				} else {
 	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
 	    				}
-	    				++$count;
 				    }
-				}
+    			}
 			}
 			
-			echo '<div>'.$count.' New Feeds have been entered</div>';
+			echo '<div>All new feeds have been entered</div>';
 			
 			if(strlen($feeds) > 0){
 				if(isset($full_content) && isset($feed_content)){

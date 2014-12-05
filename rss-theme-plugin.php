@@ -4,15 +4,34 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 1.0
+    Version: 1.0.1
     Author URI: http://www.taureanwooley.com
     */
     include_once('ttp-admin.php');
     if (!function_exists('ttp_admin_actions')) {
         function ttp_admin_actions() {
-			add_menu_page('RSS Feed', 'RSS Feed', 'administrator', __FILE__, 'ttp_admin',plugins_url('Feed_25x25.png', __FILE__));
-        }
+			add_menu_page(
+				'TW RSS Feed', 
+				'TW RSS Feed', 
+				'manage_options', 
+				'ttp_admin', 
+				'ttp_admin',
+				plugins_url('Feed_25x25.png', __FILE__)
+			);
+			add_submenu_page(
+				'ttp_admin',
+				'Settings',
+				'Settings',
+				'manage_options',
+				'theme_options',
+				'theme_options'
+			);
+		}
         add_action('admin_menu', 'ttp_admin_actions');
+        
+		function theme_options() {
+		    include_once('ttp-import-settings.php');
+		}
         
         function register_new_post_type(){
         	$array = array(
@@ -21,16 +40,20 @@
 			        'show_ui' => true,
 			        '_builtin' => false,
 			        '_edit_link' => 'post.php?post=%d',
-			        'capability_type' => 'feeds',
+			        'capability_type' => 'event',
 			        'hierarchical' => false,
-			        'rewrite' => array("slug" => "feeds"),
-			        'query_var' => "feeds",
+			        'rewrite' => array("slug" => "event"),
+			        'query_var' => "event",
 			        'taxonomies' => array('category'),
         			"supports"	=>	array("title","editor","thumbnail","excerpt"),
         		);
         	register_post_type('feeds',$array);
         }
        	add_action('init','register_new_post_type');
+       	
+       	function adminstrator_settings(){
+       		echo 'testing';
+       	}
        	
        	//On plugin activation schedule our daily database backup 
 		register_activation_hook( __FILE__, 'tw_rss_feed_schedule' );
@@ -179,10 +202,16 @@
         add_action( 'save_post', 'save_feed_meta', 10, 3 );
         
         function feed_searches($args = array()){
+            extract($args);
             $query = 'post_type=feeds';
+            $options = array();
             if(is_array($args)){
             	foreach($args as $k=>$a){
-            	    $query .= '&'.$k.'='.$a;
+            	    if($k != 'title_only'){
+            	        $query .= '&'.$k.'='.$a;
+            	    } else {
+            	        $options = array('title_only'=>true);
+            	    }
             	}
             } else {
                 $query = 'post_type=feeds&posts_per_page=30';
@@ -193,9 +222,9 @@
            	
            	$string = $layout->get_css();
            	$string .= $layout->get_js();
-        	$string .= $layout->populate_layout($query->posts);
+        	$string .= $layout->populate_layout($query->posts,$options);
         	$string = '<div id="tw-container">'.$string.'</div>';
-            $string .= '<script>var container = document.getElementById("tw-container"); var iso = new Isotope( container, { itemSelector: ".content_holder", layoutMode: "masonry" });</script>';
+            $string .= '<script>var container = document.getElementById("tw-container"); var iso = new Isotope( container, { itemSelector: ".content-holder", layoutMode: "masonry" });</script>';
 
             return $string;
         }
@@ -203,15 +232,17 @@
         
         function feed_group($id){
             global $post;
-            $p = get_post_meta($post->ID,'tw_rss_feed_options');
-            print_r($p);
-            $query = array(
-                    'post_type'=>'feeds',
-                    'meta_query' => array(
-                            array('value' => $q),
-                        ),
-                );
+            $layout = new Layout(array('post'=>'feeds'));
+            $query = 'post_type=feeds&post_per_page=5';
+            $layout->get_layout(plugin_dir_path( __FILE__  ).'/layout/layout.php');
+            
             $posts = new WP_Query($query);
+            
+            $string = '<div class="tw-feed-content">';
+            $string .= $layout->get_css();
+            $string .= $layout->populate_layout($posts->posts,array('title_only'=>true));
+            $string .= '</div>';
+            return $string;
         }
         add_shortcode('feed_group','feed_group');
         
