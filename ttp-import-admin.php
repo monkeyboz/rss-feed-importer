@@ -5,19 +5,9 @@
 	
 	if(isset($_POST['action']) && $_POST['action'] == 'trash' && isset($_POST['feed']) && sizeof($_POST['feed']) > 0){
 		$feeds = get_option('rss_feeds');
-		$p = explode('&',$feeds);
-		foreach($p as $k=>$q){
-			$p[$k] = str_replace("'",'',$q);
-			$p[$k] = str_replace("\\","",$q);
-		}
-		$p = array_unique($p);
+		$feeds = sanatize($feeds);
 		
-		//remove values from array
-		$p = array_diff($p, $_POST['feed']);
-		
-		$feed_info = implode('&',$p);
-		update_option('rss_feeds', $feed_info);
-		get_option('rss_feeds');
+		$feeds = json_decode($feeds,true);
 		
 		if(sizeof($_POST['feed']) > 0){
 			foreach($_POST['feed'] as $q){
@@ -33,348 +23,194 @@
 					'posts_per_page' => -1,
 				);
 				$my_query = new WP_Query( $args );
+				
+                
+				
 				foreach($my_query->posts as $p){
 				    ++$count_delete;
 					wp_delete_post($p->ID);
+					wp_delete_attachment( get_post_thumbnail_id($p->ID));
 				}
+				
 				$status_str .= '<div class="total-post-deleted">'.substr($q,0,strpos($q,'|')).' Total Posts Deleted: '.$count_delete.'</div>';
+				$p = explode('|',$q);
+				$f = array('feed_name','feed_url','feed_category','full_content','feed_content','feed_image_enabler');
+				
+				$test = array();
+				foreach($p as $k=>$v){
+					if($v == 'full-content'){
+						$test[$f[$k]] = 'true';
+					} else {
+						$test[$f[$k]] = $v;
+					}
+				}
+				
+				foreach($feeds as $k=>$f){
+                    if($f['feed_name'] == $test['feed_name'] && $f['feed_url'] == $test['feed_url'] && $f['feed_category'] == $test['feed_category']){
+                        unset($feeds[$k]);
+                    }
+				}
 			}
+		}
+		
+		$feeds = json_encode($feeds);
+		$j = json_decode($feeds,true);
+		if($j[0]['feed_name'] != ''){
+	    	update_option('rss_feeds',$feeds);
+		} else {
+		    update_option('rss_feeds','');
 		}
 	}
     
-	if(sizeof($_POST) > 0 && isset($_POST['feed_name'])){
+    $validate = array();
+    
+    foreach($_POST as $k=>$p){
+        if($k == 'feed_name'){
+            $_POST['feed_name'] = trim($_POST['feed_name']);
+            if($_POST['feed_name'] == ''){
+                $validate[$k]['error'] = 'Cannot be left blank';
+            }
+        }
+        if($k == 'feed_url'){
+            $_POST['feed_url'] = trim($_POST['feed_url']);
+            if($_POST['feed_url'] == ''){
+                $validate[$k]['error'] = 'Cannot be left blank';
+            } else if(preg_match("/http(s)?:\/\/(\w+).(\w+)\.?(\w+)?/i",$_POST['feed_url']) == 0) {
+                $validate[$k]['error'] = 'Invalid URL';
+            }
+        }
+    }
+    
+	if(sizeof($validate) < 1 && $_POST['feed_name'] != ''){
 		extract($_POST);
 		
-		$p = explode('&',$feed_info);
-		$p = array_unique($p);
-		
-		$p = array_filter($p);
-		
-		$feed_info = implode('&',$p);
-		update_option('rss_feeds', $feed_info);
-		$feeds = get_option('rss_feeds');
-		
-		if(strlen($feed_delete) > 0){
-			$p = explode('&', $feed_delete);
-			foreach($p as $q){
-				$args = array(
-					'post_type'		=>	'feeds',
-					'meta_query'	=>	array(
-							array(
-									'meta_key'  => 'tw_rss_feed_options',
-									'value'     => $q,
-								)
-						)
-				);
-				$my_query = new WP_Query( $args );
-				foreach($my_query->posts as $p){
-					wp_delete_post($p->ID);
-				}
-			}
-		}
-		
-		if(strlen($feeds) > 0){
-			if(isset($full_content) && isset($feed_content)){
-				update_option('rss_feeds',$feeds.'&'.$feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-			} else {
-				update_option('rss_feeds',$feeds.'&'.$feed_name.'|'.$feed_url.'|'.$feed_category);
-			}
-		} else {
-			update_option('rss_feeds',$feed_name.'|'.$feed_url.'|'.$feed_category);
-		}
-		
-		if(strlen($feed_name) > 0){
-			$ch = curl_init();
-			
-			curl_setopt($ch, CURLOPT_URL, $feed_url);
-			curl_setopt($ch, CURLOPT_USERAGENT, "MozillaXYZ/1.0");
-			curl_setopt($ch, CURLOPT_HEADER, 0);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-			$output = curl_exec($ch);
-			curl_close($ch);
-			
-			$output = str_replace('"',"'", $output);
-			
-			if(strlen($feed_category) < 1){
-				$feed_category = 'uncategorized';
-			}
-			
-			$count = 0;
-			
-			$dom = new DOMDocument;
-			@$dom->loadXML($output);
-			$ypath = new DOMXPath($dom);
-			
-			$selectOption = array('*/content','*/item');
-			$option = '';
-			foreach($selectOption as $f){
-				if($ypath->query($f)->length > 0){
-				    $option = $f;
-				}
-			}
-			
-			if($option != ''){
-    			foreach($ypath->query($option) as $a){
-    				$info = array();
-    				$count = 0;
-    				
-    				$description = array();
-    				$j = $ypath->query('//description', $a);
-    				foreach($j as $k=>$i){
-    					$description[] = $i->nodeValue;
-    				}
-    				
-    				$title = array();
-    				$j = $ypath->query('//title', $a);
-    				foreach($j as $i){
-    					$title[] = $i->nodeValue;
-    				}
-    				
-    				$link = array();
-    				$j = $ypath->query('//link', $a);
-    				foreach($j as $i){
-    					$link[] = $i->nodeValue;
-    				}
-    				
-    				foreach($link as $k=>$l){
-    					if(isset($full_content)){
-    				        $content = file_get_contents($link[$k]);
-    				        $dom = new DOMDocument;
-    				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
-    				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
-    	                    @$dom->loadHTML($content);
-    	                    $xpath = new DOMXPath($dom);
-    	                    
-    	                    $x = explode('`',$feed_content);
-    	                    $l = explode('|' ,$x[1]);
-    	                    if(isset($l[1])){
-    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
-    	                            $content = $d->nodeValue;
-    	                        }
-    	                    }
-    	                    $description[$k] = $content;
-    				    }
-    				    
-    				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title[$k].'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-    				    $p = $wpdb->get_results($query);
-    				    if(sizeof($p) < 1){
-    	    				$post = array(
-    	    						'post_title'=>$title[$k],
-    	    						'post_content'=>str_replace('"', "'", $description[$k].'<br/><br/>Content From: <a href="'.$link[$k].'">'.$ypath->query('//channel/title')->item(0)->nodeValue.'</a><br/>'),
-    	    						'post_category'=>array($feed_category),
-    	    						'post_author'=>1,
-    	    						'post_status'=>'publish',
-    	    						'post_type'=>'feeds'
-    	    					);
-    	    				$id = wp_insert_post($post);
-    	    				
-        				    get_post_image($id,$description[$k]);
-    	    				
-    	    				if(!isset($full_content)){
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-    	    				} else {
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-    	    				}
-    	    				++$count;
-    				    }
-    				}
-    			}
-			} else {
-			    $xml = simplexml_load_string($output);
-			    
-			    if(isset($xml->channel)){
-			        foreach($xml->channel->item as $x){
-        			    $info = array();
-        				$count = 0;
-        				
-        				$description  = $x->content;
-        				$title = $x->title;
-        				$title = str_replace("//<![CDATA[","",$title);
-                        $title = str_replace("//]]>","",$title);
-        				$link  = $x->id[0];
-        				
-    					if(isset($full_content)){
-    				        $content = file_get_contents($link);
-    				        $dom = new DOMDocument;
-    				        $content = preg_replace("/<script\b[^>]*>(.*?)<\/script>/is",'',$content);
-    				        $content = preg_replace("/<style\b[^>]*>(.*?)<\/style>/is",'',$content);
-    	                    @$dom->loadHTML($content);
-    	                    $xpath = new DOMXPath($dom);
-    	                    
-    	                    $xi = explode('`',$feed_content);
-    	                    $l = explode('|' ,$xi[1]);
-    	                    if(isset($l[1])){
-    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
-    	                            $content = $d->nodeValue;
-    	                        }
-    	                    }
-    	                    $description[$k] = $content;
-    				    }
-    				    
-    				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title.'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-    				    $p = $wpdb->get_results($query);
-    				    if(sizeof($p) < 1){
-    	    				$post = array(
-    	    						'post_title'=>$title,
-    	    						'post_content'=>str_replace('"', "'", $description.'<br/><br/>Content From: <a href="'.$link.'">'.$x.'</a><br/>'),
-    	    						'post_category'=>array($feed_category),
-    	    						'post_author'=>1,
-    	    						'post_status'=>'publish',
-    	    						'post_type'=>'feeds'
-    	    					);
-    	    				$id = wp_insert_post($post);
-    	    				
-        				    get_post_image($id,$description);
-    	    				
-    	    				if(!isset($full_content)){
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-    	    				} else {
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-    	    				}
-    				    }
-        			}
-			    } else {
-        			foreach($xml->entry as $x){
-        			    $info = array();
-        				$count = 0;
-        				
-        				$description  = $x->content;
-        				$title = $x->title;
-        				$title = str_replace("//<![CDATA[","",$title);
-                        $title = str_replace("//]]>","",$title);
-        				$link  = $x->id[0];
-        				
-    					if(isset($full_content)){
-    				        $content = file_get_contents($link);
-    				        $dom = new DOMDocument;
-    				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
-    				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
-    	                    @$dom->loadHTML($content);
-    	                    $xpath = new DOMXPath($dom);
-    	                    
-    	                    $xi = explode('`',$feed_content);
-    	                    $l = explode('|' ,$xi[1]);
-    	                    if(isset($l[1])){
-    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
-    	                            $content = $d->nodeValue;
-    	                        }
-    	                    }
-    	                    $description[$k] = $content;
-    				    }
-    				    
-    				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title.'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-    				    $p = $wpdb->get_results($query);
-    				    if(sizeof($p) < 1){
-    	    				$post = array(
-    	    						'post_title'=>$title,
-    	    						'post_content'=>str_replace('"', "'", $description.'<br/><br/>Content From: <a href="'.$link.'">'.$x.'</a><br/>'),
-    	    						'post_category'=>array($feed_category),
-    	    						'post_author'=>1,
-    	    						'post_status'=>'publish',
-    	    						'post_type'=>'feeds'
-    	    					);
-    	    				$id = wp_insert_post($post);
-                            
-        				    get_post_image($id,$description);
-        				    
-    	    				if(!isset($full_content)){
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-    	    				} else {
-    	    			    	update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-    	    				}
-    				    }
-        			}
-			    }
-			}
-			$status_str .= '<div>All new feeds have been entered</div>';
-			
-			$feeds = get_option('rss_feeds');
-			$p = explode('&',$feeds);
-			$p = array_unique($p);
-			$p = array_filter($p);
-			$feeds = implode('&',$p);
-		}
+        $feed = get_option('rss_feeds');
+        $feed = sanatize($feed);
+        
+        if(strpos($feed,'"feed_name":"'.$feed_name.'"') === false && strpos($feed,'"feed_url":"'.str_replace('/','\/',$feed_url).'"') === false){
+    		if(!isset($full_content) && !isset($feed_content) && $feed_content != ''){
+    		    $feed_layout = '{"feed_name":"'.$feed_name.'","feed_url":"'.$feed_url.'","feed_category":"'.$feed_category.'","full-content":"'.$feed_content.'"}';
+            } else {
+                $feed_layout = '{"feed_name":"'.$feed_name.'","feed_url":"'.$feed_url.'","feed_category":"'.$feed_category.'"}';
+            }
+            
+            if(isset($feed_image_enabler) && $feed_image_enabler == 'on'){
+                $feed_layout = substr($feed_layout,0,-1).',"feed_image_enabler":"true"}';
+            }
+            
+            $feed_layout = json_decode($feed_layout,true);
+    		$feed = json_decode($feed,true);
+    		
+    		$feed_holder = array();
+    		foreach($feed as $f){
+    			if($f['feed_name'] != '') $feed_holder[] = $f;
+    		}
+    		
+    		$feed = $feed_holder;
+    		array_push($feed,$feed_layout);
+    		$feed = json_encode($feed);
+    		
+    		$feed_layout = json_encode($feed_layout);
+    		
+    		update_option('rss_feeds',$feed);
+    		$feeds = get_option('rss_feeds');
+    		
+    		extract_info($feed_layout,$_POST);
+            
+    		$status_str .= '<div style="padding: 10px; background: #fff;">All new feeds have been entered</div>';
+        } else {
+            $validate['feed_name']['error'] = 'Duplicate Feed';
+            $validate['feed_url']['error'] = 'Duplicate Feed';
+            $feeds = get_option('rss_feeds');
+        }
 	} else {
+		$feeds = get_option('rss_feeds');
+		update_option('rss_feeds',sanatize($feeds));
 		$feeds = get_option('rss_feeds');
 	}
 ?>
 <style>
-#tw-content-layout {
-	overflow: scroll;
-	height: 400px;
-	width: 100%;
-}
-
-.total-post-deleted {
-	margin-top: 5px;
-	background: #000;
-	color: #fff;
-	border-bottom: 1px solid #efefef;
-	padding: 5px;
-}
-
-#content-div {
-	display: none;
-}
-
-.donate {
-	padding: 90px;
-	clear: both;
-	text-align: center;
-}
-
-#rss-function>div {
-	float: left;
-}
-
-.feed-hint {
-	font-size: 11px;
-	padding: 3px;
-	background: #545454;
-	padding: 5px;
-	color: #fff;
-	margin-bottom: 10px;
-	border-radius: 5px;
-	clear: both;
-	width: 90%;
-}
-
-form>div>div {
-	font-size: 14px;
-	margin-bottom: 10px;
-}
-
-.feed-option-holder {
-	clear: both;
-}
-
-.feed-option input,.feed-option select {
-	width: 90%;
-}
-
-.feed-option {
-	float: left;
-	width: 30%;
-}
-
-#feed_category {
-	font-size: 20px;
-	height: 45px;
-}
-
-.feed-option-holder {
-	background: #fff;
-	padding: 10px;
-	border-radius: 10px;
-	width: 90%;
-}
+    #tw-content-layout {
+    	overflow: scroll;
+    	height: 400px;
+    	width: 100%;
+    }
+    
+    .total-post-deleted {
+    	margin-top: 5px;
+    	background: #fff;
+    	color: #545454;
+    	border-left: #C70000 solid 5px;
+    	padding: 5px;
+    }
+    
+    #content-div {
+    	display: none;
+    }
+    
+    .donate {
+    	padding: 90px;
+    	clear: both;
+    	text-align: center;
+    }
+    
+    #rss-function>div {
+    	float: left;
+    }
+    
+    .feed-hint {
+    	font-size: 11px;
+    	padding: 3px;
+    	background: #545454;
+    	padding: 5px;
+    	color: #fff;
+    	margin-bottom: 10px;
+    	border-radius: 5px;
+    	clear: both;
+    	width: 90%;
+    }
+    
+    form>div>div {
+    	font-size: 14px;
+    	margin-bottom: 10px;
+    }
+    
+    .feed-option-holder {
+    	clear: both;
+    }
+    
+    .feed-option input,.feed-option select {
+    	width: 90%;
+    }
+    
+    .feed-option {
+    	float: left;
+    	width: 30%;
+    }
+    
+    #feed_category {
+    	font-size: 20px;
+    	height: 45px;
+    }
+    
+    .feed-option-holder {
+    	background: #fff;
+    	padding: 10px;
+    	border-radius: 10px;
+    	width: 90%;
+    }
+    .error{
+        color: #ff0000;
+        font-size: 11px;
+    }
 </style>
 <div style="padding: 10px;">
 	<div>
 		<?php echo $status_str; ?>
 	</div>
 	<h1>RSS Feed Importer</h1>
+	<?php advertisements(); ?>
+
 	<form action="" method="POST" id="rss-function">
 		<div class="feed-hint">
 			<b>Hint of the day:</b> To add in a list of feeds to a page, please
@@ -383,7 +219,7 @@ form>div>div {
 		</div>
 		<div class="feed-option-holder">
 			<div class="feed-option">
-				<div>Feed Name</div>
+				<div>Feed Name <span class="error"><?php echo @$validate['feed_name']['error']; ?></span></div>
 				<div>
 					<input type="text" name="feed_name"
 						value="<?php echo @$feed_name; ?>" />
@@ -396,7 +232,7 @@ form>div>div {
 				</div>
 			</div>
 			<div class="feed-option">
-				<div>Feed URL</div>
+				<div>Feed URL <span class="error"><?php echo @$validate['feed_url']['error']; ?></span></div>
 				<div>
 					<input type="text" name="feed_url"
 						value="<?php echo @$feed_url; ?>" />
@@ -404,13 +240,9 @@ form>div>div {
 			</div>
 			<div class="clear"></div>
 		</div>
-		<div style="width: 100%; margin-top: 10px;">
-			<div>Full-Content (experimental)</div>
-			<div>
-				<input type="checkbox" name="full_content" />
-			</div>
+		<div>
+			<div style="background: #545454; margin-top: 20px; border-radius: 10px; color: #fff; padding: 10px;">Feed Image Enabler (download up to 2 images from feed | may be slow on some servers) <input type="checkbox" name="feed_image_enabler" <?php if(isset($feed_image_enabler) && sizeof($feed_image_enabler) > 0) echo 'checked'; ?>/></div>
 		</div>
-		<div id="full-content-status"></div>
 </div>
 <style>
 #content-div {
@@ -433,8 +265,6 @@ form>div>div {
 		<input type="submit" name="submit" value="Save Feed" />
 	</div>
 </div>
-<input type="hidden" name="feed_info" value="<?php echo @$feeds; ?>" />
-<input type="hidden" name="feed_delete" value="" />
 <style>
 input[name="submit"] {
 	background: #93F56F;
@@ -494,25 +324,6 @@ select {
 	margin-top: 15px;
 }
 </style>
-<!-- <div class="header">
-			<div>Title</div>
-			<div>URL</div>
-			<div>Category</div>
-			<div>Action</div>
-			<div class="clear"></div>
-		</div>
-		<div class="layout">
-			<?php $c = explode('&', $feeds); if(strlen($c[0]) > 0){ foreach($c as $a=>$b){ 
-				$g = explode('|', $b);
-			?>
-			<div class="row" data-info="<?php echo $b; ?>">
-				<div><?php echo $g[0]; ?></div>
-				<div><?php echo $g[1]; ?></div>
-				<div><?php echo get_cat_name($g[2]); ?></div>
-				<div><a href="">Remove</a></div>
-			</div>
-			<?php } } ?>
-		</div> -->
 </form>
 <?php
     if(!class_exists('WP_List_Table')){
@@ -523,14 +334,15 @@ select {
     $feed_info = new stdClass();
     $feed_array = array();
     if($feeds != ''){
-        foreach(explode('&',$feeds) as $f){
-            
+        foreach(json_decode($feeds) as $f){
+        	$query_string = $f->feed_name.'|'.$f->feed_url.'|'.$f->feed_category;
+        	
             $args = array(
 				'post_type'		=>	'feeds',
 				'meta_query'	=>	array(
 						array(
 								'meta_key'  => 'tw_rss_feed_options',
-								'value'     => $f,
+								'value'     => $query_string,
 							)
 					),
 				'posts_per_page' => -1,
@@ -538,15 +350,17 @@ select {
 			$my_query = new WP_Query( $args );
             
             $info_holder = new stdClass();
-            $v = explode('|',$f);
-            $info_holder->ID = $f;
-            $info_holder->title = $v[0];
-            $info_holder->category = get_cat_name($v[2]);
+            $info_holder->ID = $query_string;
+            $info_holder->title = $f->feed_name;
+            $info_holder->category = get_cat_name($f->feed_category);
             $info_holder->total_feeds = $my_query->found_posts;
             $feed_array[] = $info_holder;
         }
     }
-    $feed_info->posts = $feed_array;
+    $feed_info->posts = array();
+    if($feed_array[0]->title != ''){
+        $feed_info->posts = $feed_array;
+    }
     $table->setTemplate(array('ID','title','category','total_feeds'));
     $table->setActions(array(array('title'=>'edit','type'=>'feed','page'=>'','action'=>'trash')));
     $table->getFeeds($feed_info);
@@ -555,25 +369,9 @@ select {
 <form action="" method="post">
 	<?php $table->display(); ?>
 </form>
-</form>
-<div class="donate">
-	<form action="https://www.paypal.com/cgi-bin/webscr" method="post"
-		target="_top">
-		<input type="hidden" name="cmd" value="_s-xclick"> <input
-			type="hidden" name="hosted_button_id" value="ESVXPD73ET662">
-		<input type="image"
-			src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"
-			border="0" name="submit"
-			alt="PayPal - The safer, easier way to pay online!"> <img
-			alt="" border="0"
-			src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1"
-			height="1">
-	</form>
-</div>
-
-</div>
+<?php advertisements(); ?>
 <script>
-	var fullcontent = document.getElementById('rss-function').getElementsByTagName('input')[2];
+	var fullcontent = document.getElementById('full_content');
 	document.getElementById('content-div').style.display = 'none';
 	fullcontent.onclick = function(){
 		if(document.getElementById('content-div').style.display == 'none'){
@@ -582,6 +380,7 @@ select {
 			document.getElementById('content-div').style.display = 'none';
 		}
 	}
+	
 	function removeElement(){
 		document.getElementById('rss-function').getElementsByTagName('input')[5].value = document.getElementById('rss-function').getElementsByTagName('input')[5].value.replace(this.parentNode.parentNode.getAttribute('data-info'),'');
 		document.getElementById('rss-function').getElementsByTagName('input')[5].value = document.getElementById('rss-function').getElementsByTagName('input')[5].value.replace('&'+this.parentNode.parentNode.getAttribute('data-info'),'');
@@ -696,4 +495,3 @@ select {
 		info[i].getElementsByTagName('a')[0].onclick = removeElement;
 	}
 </script>
-

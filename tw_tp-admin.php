@@ -98,6 +98,12 @@ class Layout{
             	    if(sizeof($strHolder) < 4){
             	        if($strHolder[0] == 'link'){
             	            $template_double = str_replace('['.$strHolder[0].']', get_permalink($p->ID), $template_double);
+            	        } elseif($strHolder[0] == 'images'){
+            	            $images = wp_get_attachment_url(get_post_thumbnail_id($p->ID));
+            	            if($images != ''){
+            	                $images = '<img src="'.$images.'" style="width: 100%;"/>';
+            	            }
+            	            $template_double = str_replace('['.$strHolder[0].']', $images,$template_double);
             	        } else {
             		        $template_double = str_replace('['.$strHolder[0].']', $p->{$strHolder[0]}, $template_double);
             	        }

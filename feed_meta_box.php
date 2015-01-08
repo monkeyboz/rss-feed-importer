@@ -34,4 +34,8 @@
         }
     } ?>
     <div class="clear"></div>
+    <div>
+        <h3>Feed Tag</h3>
+        <input type="text" name="tw_rss_feed_options" value="<?php echo @$json['tw_rss_feed_options'][0]; ?>" style="width: 100%;"/>
+    </div>
 </div>
