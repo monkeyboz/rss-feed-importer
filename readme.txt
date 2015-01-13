@@ -35,6 +35,10 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.1 - Updated wordpress feed_info and feed_search issue as well as placing new monitization options and social sharing on the blogging sections. Should allow for better scaling later down the line.
+
 v.2.0 - Updated with listings of feeds as well as the ability to delete directly from the plugin. Also have added the ability to view impressions.
+
 v.1.0.1 - Fixed bug with deletes and fixed issue with rss feed importer for most (if not all) rss feeds
+
 v.1.0 - Initial Installation

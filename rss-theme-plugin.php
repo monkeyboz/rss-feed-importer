@@ -4,7 +4,7 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 2.0
+    Version: 2.0.1
     Author URI: http://www.taureanwooley.com
     */
     include_once('tw_tp-admin.php');
@@ -18,6 +18,14 @@
 				'twp_admin',
 				'twp_admin',
 				plugins_url('Feed_25x25.png', __FILE__)
+			);
+			add_submenu_page(
+				'twp_admin',
+				'Monitizing and Sharing',
+				'Monitizing and Sharing',
+				'manage_options',
+				'tw_monitization',
+				'tw_monitization'
 			);
 			add_submenu_page(
 				'twp_admin',
@@ -48,6 +56,9 @@
         
         add_filter( 'widget_text', 'do_shortcode');
         
+        function tw_monitization(){
+            include_once(plugin_dir_path( __FILE__ ).'tw_blogging_options.php');
+        }
         
         function tw_feed_update(){
             update_option('tw_rss_feed_update_'.date('Y-m-d_h:i:s'),$data);
@@ -101,10 +112,12 @@
 				foreach($img[2] as $k=>$i){
 					$domain_check = parse_url($i);
 					if(!isset($domain_check['host'])){
-						$i = (strpos($i)!=0)?'/'.$i:$i;
+						$i = @(strpos($i)!=0)?'/'.$i:$i;
 						$i = $domain['scheme'].'://'.$domain['host'].$i;
 					}
 					$img_id = upload_files($i);
+					
+					
 					if($k == 0){
 						set_post_thumbnail($id,$img_id);
 					} else {
@@ -118,6 +131,28 @@
 					++$count;
 				}
 			}
+		}
+		
+		function api_call($url,$post_fields = array()){
+			$ch = curl_init();
+		    curl_setopt($ch, CURLOPT_URL, $url);
+		    curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+		    curl_setopt($ch, CURLOPT_HEADER, false); 
+		    if(sizeof($post_fields) > 0){
+		    	curl_setopt($ch, CURLOPT_POST, 1);
+		    	curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
+		    }
+		    $data = curl_exec($ch);
+		    
+		    return $data;
+		}
+		
+		function hints(){
+			return api_call('http://quanticpost.com/info_pull/hints');
+		}
+		
+		function get_feed_hints(){
+			return api_call('http://quanticpost.com/info_pull/feed_hints');
 		}
 		
 		function upload_files($url,$alt="TW RSS Feed Importer"){
@@ -192,10 +227,6 @@
         }
        	add_action('init','register_new_post_type');
        	
-       	function adminstrator_settings(){
-			
-       	}
-       	
 		function tw_create_rss_feed(){
 			$feeds = get_option('rss_feeds');
 			
@@ -218,7 +249,6 @@
 		}
 		
 		function advertisements(){
-		    if(get_option('tw_advertisements') != 'successful'){
 		    ?>
 		    <div style="text-align: center;"><script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
             <!-- news network -->
@@ -232,15 +262,8 @@
             <?php
             
             ?>
-		    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top" style="text-align: center; border-top: 2px solid #000; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 15px;">
-                <input type="hidden" name="cmd" value="_s-xclick">
-                <input type="hidden" name="hosted_button_id" value="TSXTKEMPLXGCN">
-                <input type="hidden" name="return" value="<?php echo 'testing.com'; ?>">
-                <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_buynowCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
-                <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
-            </form>
+		    <a href="http://quanticpost.com/" style="color: #fff; text-decoration: none;"><div style='text-align: center; background: #5CE82E; border-radius: 10px; padding: 30px 10px; margin: 10px;'>Donate Now</div></a>
 		    <?php
-		    }
 		}
 		
 		//sanatize arrays for previous version which creates options to use for json instead of custom string which was originally used for
@@ -591,6 +614,29 @@
 		}
 		add_action( 'tw_hourly_event', 'tw_do_this_hourly' );
 		
+		function tw_sharing( $content ) {
+		    global $post;
+		    
+		    if($post->post_type == 'feeds'){
+    		    $header = '';
+    		    
+    		    foreach(explode(',',get_option('tw_social')) as $p){
+            	    if($p != ''){
+            	        $header .= file_get_contents(plugin_dir_path( __FILE__  ).'layout/share/'.$p.'.php');
+            	        $header = str_replace('[url]',$post->guid,$header);
+            	    }
+            	}
+            	
+                $content = $header.$content;
+    		    $content = do_shortcode($content);
+    		    $content = $content.$header;
+		    } else {
+		        $content = do_shortcode($content);
+		    }
+        	return $content;
+        }
+        add_filter( 'the_content', 'tw_sharing' );
+		
 		function create_content_string($description,$link,$title,$feed_category){
 			$string = get_cat_name($feed_category);
 			$string = substr($string,0,-1);
@@ -599,6 +645,7 @@
 		
         function save_posts($arg){
             extract($arg);
+            
             $post = array(
 					'post_title'=>$title,
 					'post_content'=>create_content_string($description,$feed_url,$title,$feed_category),
@@ -668,7 +715,15 @@
 			$string .= $layout->populate_layout($query->posts,$options);
 			$string = '<div id="tw-container">'.$string.'</div>';
             $string .= '<script>var container = document.getElementById("tw-container"); var iso = new Isotope( container, { itemSelector: ".content-holder", layoutMode: "masonry" });</script>';
-			
+		    
+			if(get_option('tw_advertising') != ''){
+			    $testing = rand(0,100);
+			    if($testing%10 == 0){
+			        $string .= file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php');
+			    } else {
+			        $string = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php').$string;
+			    }
+			}
             return $string;
         }
         add_shortcode('feed_searches','feed_searches');

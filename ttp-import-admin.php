@@ -24,8 +24,6 @@
 				);
 				$my_query = new WP_Query( $args );
 				
-                
-				
 				foreach($my_query->posts as $p){
 				    ++$count_delete;
 					wp_delete_post($p->ID);
@@ -154,10 +152,6 @@
     	text-align: center;
     }
     
-    #rss-function>div {
-    	float: left;
-    }
-    
     .feed-hint {
     	font-size: 11px;
     	padding: 3px;
@@ -167,7 +161,6 @@
     	margin-bottom: 10px;
     	border-radius: 5px;
     	clear: both;
-    	width: 90%;
     }
     
     form>div>div {
@@ -177,10 +170,6 @@
     
     .feed-option-holder {
     	clear: both;
-    }
-    
-    .feed-option input,.feed-option select {
-    	width: 90%;
     }
     
     .feed-option {
@@ -197,7 +186,6 @@
     	background: #fff;
     	padding: 10px;
     	border-radius: 10px;
-    	width: 90%;
     }
     .error{
         color: #ff0000;
@@ -213,9 +201,7 @@
 
 	<form action="" method="POST" id="rss-function">
 		<div class="feed-hint">
-			<b>Hint of the day:</b> To add in a list of feeds to a page, please
-			feel free to use the following shortcode [feed_search
-			category="category_name"][/feed_search]
+			<b>Hint of the day:</b> <?php echo hints(); ?>
 		</div>
 		<div class="feed-option-holder">
 			<div class="feed-option">
@@ -242,6 +228,9 @@
 		</div>
 		<div>
 			<div style="background: #545454; margin-top: 20px; border-radius: 10px; color: #fff; padding: 10px;">Feed Image Enabler (download up to 2 images from feed | may be slow on some servers) <input type="checkbox" name="feed_image_enabler" <?php if(isset($feed_image_enabler) && sizeof($feed_image_enabler) > 0) echo 'checked'; ?>/></div>
+		</div>
+		<div>
+		    <?php //echo get_feed_hints(); ?>
 		</div>
 </div>
 <style>
@@ -366,9 +355,11 @@ select {
     $table->getFeeds($feed_info);
     $table->prepare_items();
 ?>
-<form action="" method="post">
-	<?php $table->display(); ?>
-</form>
+<div>
+    <form action="" method="post">
+    	<?php $table->display(); ?>
+    </form>
+</div>
 <?php advertisements(); ?>
 <script>
 	var fullcontent = document.getElementById('full_content');

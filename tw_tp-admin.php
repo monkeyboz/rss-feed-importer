@@ -101,7 +101,9 @@ class Layout{
             	        } elseif($strHolder[0] == 'images'){
             	            $images = wp_get_attachment_url(get_post_thumbnail_id($p->ID));
             	            if($images != ''){
-            	                $images = '<img src="'.$images.'" style="width: 100%;"/>';
+            	                $images = '<a href="[link]"><div style="height: 150px; overflow: hidden; margin-bottom: 10px; border-bottom: 5px solid #ababab;"><img src="'.$images.'" style="width: 100%;"/></div></a>';
+            	            } else {
+            	                $images = '';
             	            }
             	            $template_double = str_replace('['.$strHolder[0].']', $images,$template_double);
             	        } else {
