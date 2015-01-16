@@ -81,8 +81,11 @@ class Layout{
     */
     //if there is information in the template but not in the information string, then there will be an ommiting of that information
     //until it is otherwise validated through the plugin
-    public function populate_layout($info,$options=array()){
+    public function populate_layout($info,$options=array(),$advertisements){
         extract($options);
+        
+	    $advert = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php');
+        
         $templateHolder = "";
         $template = $this->layout;
         if($this->layout == ''){
@@ -97,7 +100,12 @@ class Layout{
         	        preg_match("/(\w+)(\:(\d+))?/is", $s, $strHolder);
             	    if(sizeof($strHolder) < 4){
             	        if($strHolder[0] == 'link'){
-            	            $template_double = str_replace('['.$strHolder[0].']', get_permalink($p->ID), $template_double);
+            	            if(strlen(strip_tags($p->post_content)) < 100){
+            	                preg_match_all("/Read More:(.*)<a href='(.*)'>(.*)<\/a>/is", $p->post_content, $pa);
+            	                $template_double = str_replace('['.$strHolder[0].']', str_replace(' ','',$pa[2][0]), $template_double);
+            	            } else {
+            	                $template_double = str_replace('['.$strHolder[0].']', get_permalink($p->ID), $template_double);
+            	            }
             	        } elseif($strHolder[0] == 'images'){
             	            $images = wp_get_attachment_url(get_post_thumbnail_id($p->ID));
             	            if($images != ''){

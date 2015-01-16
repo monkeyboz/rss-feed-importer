@@ -28,7 +28,7 @@
     <input type="submit" value="submit" name="submit">
 </form>
 
-<h2>Impressions Report (under development <a href="http://quanticpost.com/impressionsreports">Read More</a>)</h2>
+<h2>Impressions Report (under development <a href="http://quanticpost.com/impressionsreports1">Read More</a>)</h2>
 <?php
     $f = $wpdb->get_results('SELECT meta_value FROM '.$wpdb->postmeta.' WHERE meta_key LIKE "tw_rss_feed_impression"');
     //print '<pre>'.print_r($f,true).'</pre>';

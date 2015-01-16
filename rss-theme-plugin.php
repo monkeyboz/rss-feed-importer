@@ -21,6 +21,14 @@
 			);
 			add_submenu_page(
 				'twp_admin',
+				'Impressions',
+				'Impressions',
+				'manage_options',
+				'tw_impressions',
+				'tw_impressions'
+			);
+			add_submenu_page(
+				'twp_admin',
 				'Monitizing and Sharing',
 				'Monitizing and Sharing',
 				'manage_options',
@@ -55,6 +63,10 @@
         add_action('admin_menu', 'tw_rss_admin_actions');
         
         add_filter( 'widget_text', 'do_shortcode');
+        
+        function tw_impressions(){
+            include_once(plugin_dir_path( __FILE__ ).'tw_impressions.php');
+        }
         
         function tw_monitization(){
             include_once(plugin_dir_path( __FILE__ ).'tw_blogging_options.php');
@@ -262,7 +274,13 @@
             <?php
             
             ?>
-		    <a href="http://quanticpost.com/" style="color: #fff; text-decoration: none;"><div style='text-align: center; background: #5CE82E; border-radius: 10px; padding: 30px 10px; margin: 10px;'>Donate Now</div></a>
+            <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                <input type="hidden" name="cmd" value="_s-xclick">
+                <input type="hidden" name="hosted_button_id" value="TSXTKEMPLXGCN">
+                <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_buynowCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+                <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+            </form>
+		    <!-- <a href="http://quanticpost.com/" style="color: #fff; text-decoration: none;"><div style='text-align: center; background: #5CE82E; border-radius: 10px; padding: 30px 10px; margin: 10px;'>Donate Now</div></a> -->
 		    <?php
 		}
 		
@@ -712,18 +730,12 @@
            	
            	$string = $layout->get_css();
            	$string .= $layout->get_js();
-			$string .= $layout->populate_layout($query->posts,$options);
+			$string .= $layout->populate_layout($query->posts,$options,get_option('tw_advertising'));
 			$string = '<div id="tw-container">'.$string.'</div>';
             $string .= '<script>var container = document.getElementById("tw-container"); var iso = new Isotope( container, { itemSelector: ".content-holder", layoutMode: "masonry" });</script>';
 		    
-			if(get_option('tw_advertising') != ''){
-			    $testing = rand(0,100);
-			    if($testing%10 == 0){
-			        $string .= file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php');
-			    } else {
-			        $string = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php').$string;
-			    }
-			}
+			
+			$string = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php').$string;
             return $string;
         }
         add_shortcode('feed_searches','feed_searches');

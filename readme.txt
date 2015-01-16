@@ -35,6 +35,8 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.2 - Updated impressions page to allow for changes on quantics server also recreated the donate button. Need donations, this is a one man web development company.
+
 v.2.0.1 - Updated wordpress feed_info and feed_search issue as well as placing new monitization options and social sharing on the blogging sections. Should allow for better scaling later down the line.
 
 v.2.0 - Updated with listings of feeds as well as the ability to delete directly from the plugin. Also have added the ability to view impressions.

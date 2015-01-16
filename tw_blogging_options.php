@@ -16,18 +16,20 @@
     }
     
     $share = array();
-    if(isset($_POST['social']) && sizeof($_POST['social'])){
+    if(isset($_POST['social']) && sizeof($_POST['social']) > 0){
         $shared = '';
         foreach($_POST['social'] as $k=>$ae){
             $shared .= $k.',';
             $share[$k] = 'on';
         }
         update_option('tw_social',$shared);
-    } else {
+    } elseif(isset($_POST['submit'])) {
         update_option('tw_social','');
     }
+    
     $share = explode(',',get_option('tw_social'));
     $d = array();
+    
     foreach($share as $f){
         $d[$f] = 'on';
     }
@@ -76,6 +78,7 @@
             <img src="http://icons.iconarchive.com/icons/position-relative/social-1/128/linkedin-icon.png"/>
             <input type="checkbox" name="social[linkedin]" <?php if($share['linkedin']){ echo 'checked'; } ?>/>
         </div>
+        <input type="hidden" value="no" name="socialbuttons"/>
         <div class="clear"></div>
     </div>
     <div class="share">
@@ -86,4 +89,19 @@
     </div>
     <div class="clear"></div>
     <input type="submit" name="submit" value="submit" style="margin-top: 30px;"/>
+    <script>
+        var doc = document.getElementsByTagName('input');
+        for(var i = 0; i < 3; ++i){
+            doc[i].onclick = function(el){ checkVariables(el); }
+        }
+        var social = false;
+        function checkVariables(vars){
+            for(var i = 0; i < 3; ++i){
+                if(social == false){
+                    social = true;
+                    break;
+                }
+            }
+        }
+    </script>
 </form>

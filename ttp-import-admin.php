@@ -227,12 +227,25 @@
 			<div class="clear"></div>
 		</div>
 		<div>
+		    <div class="content-display"></div>
+		    <div class="full-content">
+		        Show Full Content
+		    </div>
+		</div>
+		<div>
 			<div style="background: #545454; margin-top: 20px; border-radius: 10px; color: #fff; padding: 10px;">Feed Image Enabler (download up to 2 images from feed | may be slow on some servers) <input type="checkbox" name="feed_image_enabler" <?php if(isset($feed_image_enabler) && sizeof($feed_image_enabler) > 0) echo 'checked'; ?>/></div>
 		</div>
 		<div>
 		    <?php //echo get_feed_hints(); ?>
 		</div>
 </div>
+<script>
+    var fullcontent = document.getElementsByClassName('full-content');
+    fullcontent[0].onclick = function (vars){
+    	var content = document.getElementsByClassName('content-display');
+    	content[0].innerHTML;
+    }
+</script>
 <style>
 #content-div {
 	clear: both;
