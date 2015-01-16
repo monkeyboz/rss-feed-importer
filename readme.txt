@@ -35,6 +35,8 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.3 - Fixed issue with changing schedule. Please make sure you turn off then turn on scheduling for impressions reporting.
+
 v.2.0.2 - Update impressions page to allow for various options that were required to clean up the impressions flow.  It now allows viewing of impressions with updates based on scheduling.
 
 v.2.0.1 - Updated wordpress feed_info and feed_search issue as well as placing new monitization options and social sharing on the blogging sections. Should allow for better scaling later down the line.

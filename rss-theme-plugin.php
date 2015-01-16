@@ -4,7 +4,7 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 2.0.2
+    Version: 2.0.3
     Author URI: http://www.taureanwooley.com
     */
     include_once('tw_tp-admin.php');
@@ -493,7 +493,6 @@
             				$title = $x->title;
             				$title = str_replace("//<![CDATA[","",$title);
                             $title = str_replace("//]]>","",$title);
-                            echo $title;
             				$link  = $x->id[0];
             				
         					if(isset($full_content)){
@@ -620,7 +619,6 @@
 				update_option('tw_schedule_event','hourly');
 			}
 			if ( ! wp_next_scheduled( 'tw_hourly_event' ) ) {
-			    echo get_option('tw_schedule_event');
 				wp_schedule_event( time(), get_option('tw_schedule_event'), 'tw_hourly_event');
 			}
 		}
