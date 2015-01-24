@@ -63,7 +63,7 @@ class Table_Creator extends WP_List_Table {
                     );
                 }
             }
-            $this->total_posts = $data->found_posts;
+            $this->total_posts = sizeof($d);
             return $d;
         }
     
@@ -123,7 +123,11 @@ class Table_Creator extends WP_List_Table {
             if($this->actions){
                 $actions = array();
                 foreach($this->actions as $k=>$a){
-                    $actions[$a['title']] = sprintf('<a href="'.$a['page'].'"?'.$a['type'].'=%s&action=%s', $item['ID'],$a['action']);
+                    if(isset($a['title'])){
+                        $actions[$a['title']] = sprintf('<a href="'.$a['page'].'"?'.$a['type'].'=%s&action=%s', $item['ID'],$a['action']);
+                    } else {
+                        $actions[$a] = '';
+                    }
                 }
                 return sprintf('%1$s <span style="color:silver">(id:%2$s)</span>%3$s',
                     /*$1%s*/ $item['title'],

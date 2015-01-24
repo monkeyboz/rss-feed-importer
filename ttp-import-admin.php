@@ -2,6 +2,12 @@
 	global $wpdb;
 	
 	$status_str = '';
+	$deleted = '';
+	
+	//tw_create_rss_feed();
+	if(isset($_POST['remove'])){
+	    $deleted = '<div class="total-post-deleted">Total Articles deleted '.flush_feeds().'</div>';
+	}
 	
 	if(isset($_POST['action']) && $_POST['action'] == 'trash' && isset($_POST['feed']) && sizeof($_POST['feed']) > 0){
 		$feeds = get_option('rss_feeds');
@@ -26,8 +32,16 @@
 				
 				foreach($my_query->posts as $p){
 				    ++$count_delete;
+				    $m = get_post_meta($p->ID);
+				    wp_delete_attachment( get_post_thumbnail_id($p->ID),true);
 					wp_delete_post($p->ID);
-					wp_delete_attachment( get_post_thumbnail_id($p->ID));
+        			
+        			foreach($m as $k=>$f){
+        			    preg_match('/rss-feed-image-/i',$k,$r);
+        			    if(sizeof($r) == 1){
+        			        wp_delete_attachment($f[0],true);
+        			    }
+        			}
 				}
 				
 				$status_str .= '<div class="total-post-deleted">'.substr($q,0,strpos($q,'|')).' Total Posts Deleted: '.$count_delete.'</div>';
@@ -79,7 +93,7 @@
         }
     }
     
-	if(sizeof($validate) < 1 && $_POST['feed_name'] != ''){
+	if(sizeof($validate) < 1 && isset($_POST['feed_name']) && $_POST['feed_name'] != ''){
 		extract($_POST);
 		
         $feed = get_option('rss_feeds');
@@ -194,6 +208,7 @@
 </style>
 <div style="padding: 10px;">
 	<div>
+	    <?php echo $deleted; ?>
 		<?php echo $status_str; ?>
 	</div>
 	<h1>RSS Feed Importer</h1>
@@ -235,11 +250,13 @@
 		<div>
 			<div style="background: #545454; margin-top: 20px; border-radius: 10px; color: #fff; padding: 10px;">Feed Image Enabler (download up to 2 images from feed | may be slow on some servers) <input type="checkbox" name="feed_image_enabler" <?php if(isset($feed_image_enabler) && sizeof($feed_image_enabler) > 0) echo 'checked'; ?>/></div>
 		</div>
-		<div>
-		    <?php //echo get_feed_hints(); ?>
-		</div>
 </div>
 <script>
+    var click = document.getElementById('clicking');
+    click.onclick = function(){
+        window.submit();
+        return false;
+    }
     var fullcontent = document.getElementsByClassName('full-content');
     fullcontent[0].onclick = function (vars){
     	var content = document.getElementsByClassName('content-display');
@@ -264,7 +281,7 @@
 </div>
 <div style="clear: both;">
 	<div>
-		<input type="submit" name="submit" value="Save Feed" />
+		<input id="savefeed" type="submit" name="submit" value="Save Feed" />
 	</div>
 </div>
 <style>
@@ -324,6 +341,13 @@ select {
 	padding: 10px;
 	height: 20px;
 	margin-top: 15px;
+}
+#clicking{
+    margin: 20px 0px;
+}
+#clicking input{
+    border-radius: 10px;
+    box-shadow: 2px 2px 0px rgba(0,0,0,.5);
 }
 </style>
 </form>
@@ -399,6 +423,7 @@ select {
 	
 	var l = document.getElementById('rss-function').getElementsByTagName('input')[4];
 	l.onclick = function(){ getLayout(document.getElementById('rss-function').getElementsByTagName('input')[1].value); return false; }
+	alert(l.getAttribute('name'));
 	
 	function createCORSRequest(method, url) {
 	  if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari

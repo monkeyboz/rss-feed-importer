@@ -35,7 +35,11 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.5 - Fixed issue with duplicate feed posts.
+
 v.2.0.4 - Cleaned up flow for impressions to include new impressions page on click. Old link to quanticpost.com server is no longer available outside of wordpress until reports and seo can be combined.
+
+v.2.0.3 - Fixed issue with impressions page and added ability to view on separate page.
 
 v.2.0.2 - Update impressions page to allow for various options that were required to clean up the impressions flow.  It now allows viewing of impressions with updates based on scheduling.
 

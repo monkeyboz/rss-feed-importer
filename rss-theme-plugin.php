@@ -4,7 +4,7 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 2.0.4
+    Version: 2.0.5
     Author URI: http://www.taureanwooley.com
     */
     include_once('tw_tp-admin.php');
@@ -120,6 +120,8 @@
 			$domain = parse_url($domain);
 			set_time_limit(100);
 		    preg_match_all("/img(.*?)src=['\"](.*?)['\"](.*?)\/\>/i", $description, $img);
+		    $count = 0;
+		    
 			if(is_array($img)){
 				foreach($img[2] as $k=>$i){
 					$domain_check = parse_url($i);
@@ -127,18 +129,19 @@
 						$i = @(strpos($i)!=0)?'/'.$i:$i;
 						$i = $domain['scheme'].'://'.$domain['host'].$i;
 					}
-					$img_id = upload_files($i);
+					$img_id = upload_files($i,$id);
 					
-					
-					if($k == 0){
-						set_post_thumbnail($id,$img_id);
-					} else {
-						if(is_numeric($img_id)){
-							add_post_meta($id,'rss-feed-image-'.$k,$img_id);
+					if(isset($img_id)){
+						if($k == 0){
+							set_post_thumbnail($id,$img_id);
+						} else {
+							if(is_numeric($img_id)){
+								add_post_meta($id,'rss-feed-image-'.$k,$img_id);
+							}
 						}
-					}
-					if($count > 2){
-					    return true;
+						if($count > 2){
+						    return true;
+						}
 					}
 					++$count;
 				}
@@ -167,32 +170,41 @@
 			return api_call('http://quanticpost.com/info_pull/feed_hints');
 		}
 		
-		function upload_files($url,$alt="TW RSS Feed Importer"){
+		function upload_files($url,$id,$alt="TW RSS Feed Importer"){
 			$tmp = download_url( $url );
-		    $desc = $alt;
-		    $file_array = array();
-		
-		    // Set variables for storage
-		    // fix file filename for query strings
-		    preg_match("/[^\?]+\.(jpg|jpe|jpeg|gif|png)/i", $url, $matches);
-		    $file_array['name'] = basename($matches[0]);
-		    $file_array['tmp_name'] = $tmp;
-		
-		    // If error storing temporarily, unlink
-		    if ( is_wp_error( $tmp ) ) {
-		        @unlink($file_array['tmp_name']);
-		        $file_array['tmp_name'] = '';
-		    }
-		
-		    // do the validation and storage stuff
-		    $id = media_handle_sideload( $file_array, $postID, $desc);
-		
-		    // If error storing permanently, unlink
-		    if ( is_wp_error($id) ) {
-		        @unlink($file_array['tmp_name']);
-		        return $id;
-		    }
-		    return $id;
+			$desc = $alt;
+			$file_array = array();
+			
+			if(is_array($tmp) || @filesize($tmp) < 100){
+				return false;
+			}
+			
+			// Set variables for storage
+			// fix file filename for query strings
+			preg_match("/[^\?]+\.(jpg|jpe|jpeg|gif|png)/i", $url, $matches);
+			
+			if(isset($matches) && sizeof($matches) > 0){
+				$file_array['name'] = basename($matches[0]);
+				$file_array['tmp_name'] = $tmp;
+				
+				// If error storing temporarily, unlink
+				if ( is_wp_error( $tmp ) ) {
+					@unlink($file_array['tmp_name']);
+					$file_array['tmp_name'] = '';
+				}
+				
+				// do the validation and storage stuff
+				$id = media_handle_sideload( $file_array, $id );
+				
+				// If error storing permanently, unlink
+				if ( is_wp_error($id) ) {
+					@unlink($file_array['tmp_name']);
+					return $id;
+				}
+				return $id;
+			} else {
+				return false;
+			}
 		}
 		
 		function query_feed_group($feed){
@@ -222,19 +234,24 @@
 		}
         
         function register_new_post_type(){
-			$array = array(
+        	$array = array(
+		      'public' => true,
+		      'label'  => 'Feeds'
+		    );
+        	
+			/*$array = array(
 					"label"	=>	"Feeds",
 					"public"	=>	true,
 					'show_ui' => true,
 					'_builtin' => false,
 					'_edit_link' => 'post.php?post=%d',
-					'capability_type' => 'event',
+					'capability_type' => 'tw_feed',
 					'hierarchical' => false,
-					'rewrite' => array("slug" => "event"),
-					'query_var' => "event",
+					'rewrite' => array("slug" => "tw_feed"),
+					'query_var' => "tw_feed",
 					'taxonomies' => array('category'),
 					"supports"	=>	array("title","editor","thumbnail","excerpt"),
-			);
+			);*/
 			register_post_type('feeds',$array);
         }
        	add_action('init','register_new_post_type');
@@ -338,6 +355,7 @@
 			$feed_settings = extract_feed($json,$args);
 			
 			$query_string = $json['feed_name'].'|'.$json['feed_url'].'|'.$json['feed_category'];
+			
 			$post = new WP_Query(
 				array(
 						'post_type'			=>	'feeds',
@@ -348,6 +366,8 @@
 						)
 					));
 			$feed_settings->total_feeds = $post->found_posts;
+			$feed_settings->title = $json['feed_name'];
+			
 			return $feed_settings;
 		}
 		
@@ -373,6 +393,10 @@
 			);
 			$pl = new WP_Query($args);
 			
+			if(!isset($feed_image_enabler)){
+				$feed_image_enabler = '';
+			}
+			
 			$update = new stdClass();
 			if(strlen($feed_name) > 0){
     			$ch = curl_init();
@@ -384,8 +408,6 @@
     			curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     			$output = curl_exec($ch);
     			curl_close($ch);
-    			
-    			$output = str_replace('"',"'", $output);
     			
     			if(strlen($feed_category) < 1){
     				$feed_category = 'uncategorized';
@@ -430,53 +452,57 @@
     				}
     				
     				foreach($title as $k=>$l){
-    					if(isset($full_content)){
-    				        $content = file_get_contents($link[$k]);
-    				        $dom = new DOMDocument;
-    				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
-    				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
-    	                    @$dom->loadHTML($content);
-    	                    $xpath = new DOMXPath($dom);
-    	                    
-    	                    $x = explode('`',$feed_content);
-    	                    $l = explode('|' ,$x[1]);
-    	                    if(isset($l[1])){
-    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
-    	                            $content = $d->nodeValue;
-    	                        }
-    	                    }
-    	                    $description[$k] = $content;
-    				    }
-    				    
-    				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title[$k].'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-    				    $p = $wpdb->get_results($query);
-    				    
-    				    if(sizeof($p) < 1){
-    	    				if(!isset($full_content)){
-    	    				    $id = save_posts(array(
-    	    				                        'title'=>$title[$k],
-    	    				                        'description'=>$description[$k],
-    	    				                        'feed_name'=>$feed_name,
-    	    				                        'feed_url'=>$link[$k],
-    	    				                        'feed_category'=>$feed_category,
-    	    				                        'ypath'=>$ypath,
-    	    				                        'feed_image_enabler'=>$feed_image_enabler));
-    	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-    	    				} else {
-    	    				    $id = save_posts(array(
-    	    				                        'title'=>$title[$k],
-    	    				                        'description'=>$description[$k],
-    	    				                        'feed_name'=>$feed_name,
-    	    				                        'feed_url'=>$link[$k],
-    	    				                        'full_content'=>true,
-    	    				                        'feed_content'=>$feed_content,
-    	    				                        'ypath'=>$ypath,
-    	    				                        'feed_image_enabler'=>$feed_image_enabler));
-    	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-    	    				}
-    	    				$count = $id['count'];
-    				    }
-        			}
+    				    if(isset($description[$k-1])){
+    				    	if(isset($full_content)){
+	    				        $content = file_get_contents($link[$k]);
+	    				        $dom = new DOMDocument;
+	    				        $content = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is','',$content);
+	    				        $content = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is','',$content);
+	    	                    @$dom->loadHTML($content);
+	    	                    $xpath = new DOMXPath($dom);
+	    	                    
+	    	                    $x = explode('`',$feed_content);
+	    	                    $l = explode('|' ,$x[1]);
+	    	                    if(isset($l[1])){
+	    	                        foreach($xpath->query('//div[@'.$l[0].'="'.$l[1].'"]') as $d){
+	    	                            $content = $d->nodeValue;
+	    	                        }
+	    	                    }
+	    	                    $description[$k] = $content;
+	    				    }
+    				    	
+	    				    if(sizeof($description) < sizeof($title)){
+	    				    	$content = $description[$k-1];
+	    				    } else {
+	    				    	$content = $description[$k];
+	    				    }
+	    				    
+		    				if(!isset($full_content)){
+		    				    $id = save_posts(array(
+		    				                        'title'=>$title[$k],
+		    				                        'description'=>$content,
+		    				                        'feed_name'=>$feed_name,
+		    				                        'feed_url'=>$link[$k],
+		    				                        'feed_provider'=>$feed_url,
+		    				                        'feed_category'=>$feed_category,
+		    				                        'ypath'=>$ypath,
+		    				                        'feed_image_enabler'=>$feed_image_enabler));
+		    				} else {
+		    				    $id = save_posts(array(
+		    				                        'title'=>$title[$k],
+		    				                        'description'=>$content,
+		    				                        'feed_name'=>$feed_name,
+		    				                        'feed_url'=>$link[$k],
+		    				                        'feed_provider'=>$feed_url,
+		    				                        'full_content'=>true,
+		    				                        'feed_content'=>$feed_content,
+		    				                        'ypath'=>$ypath,
+		    				                        'feed_image_enabler'=>$feed_image_enabler));
+		    				}
+		    				$count += $id['count'];
+		    				$update->deleted += (isset($id['deleted']))?$id['deleted']:0;
+    					}
+				    }
         			$update->updated = 'Feeds Added: '.$count.'<br/>';
         			$update->ID = $feed_name;
     			} else {
@@ -484,12 +510,13 @@
     			    $xml = simplexml_load_string($output);
     			    
     			    $count = 0;
+    			    
     			    if(isset($xml->channel)){
+    			        
     			        foreach($xml->channel->item as $x){
             			    $info = array();
-            				$count = 0;
             				
-            				$description  = $x->content;
+            				$description  = (isset($x->content))?$x->content:$x->description;
             				$title = $x->title;
             				$title = str_replace("//<![CDATA[","",$title);
                             $title = str_replace("//]]>","",$title);
@@ -510,37 +537,32 @@
         	                            $content = $d->nodeValue;
         	                        }
         	                    }
-        	                    $description[$k] = $content;
+        	                    $description = $content;
         				    }
         				    
-        				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title.'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-        				    $p = $wpdb->get_results($query);
-        				    
-        				    if(sizeof($p) < 1){
-        	    				if(!isset($full_content)){
-        	    				    $id = save_posts(array(
-        	    				                        'title'=>$title,
-        	    				                        'description'=>$description[$k],
-        	    				                        'feed_name'=>$feed_name,
-        	    				                        'feed_url'=>$link,
-        	    				                        'feed_category'=>$feed_category,
-        	    				                        'ypath'=>$ypath,
-        	    				                        'feed_image_enabler'=>$feed_image_enabler));
-        	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-        	    				} else {
-        	    				    $id = save_posts(array(
-        	    				                        'title'=>$title,
-        	    				                        'description'=>$description[$k],
-        	    				                        'feed_name'=>$feed_name,
-        	    				                        'feed_url'=>$link,
-        	    				                        'full_content'=>true,
-        	    				                        'feed_content'=>$feed_content,
-        	    				                        'ypath'=>$ypath,
-        	    				                        'feed_image_enabler'=>$feed_image_enabler));
-        	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-        	    				}
-        	    				$count = $id['count'];
-        				    }
+    	    				if(!isset($full_content)){
+    	    				    $id = save_posts(array(
+    	    				                        'title'=>$title,
+    	    				                        'description'=>$description,
+    	    				                        'feed_name'=>$feed_name,
+    	    				                        'feed_url'=>$link,
+    	    				                        'feed_provider'=>$feed_url,
+    	    				                        'feed_category'=>$feed_category,
+    	    				                        'ypath'=>$ypath,
+    	    				                        'feed_image_enabler'=>$feed_image_enabler));
+    	    				} else {
+    	    				    $id = save_posts(array(
+    	    				                        'title'=>$title,
+    	    				                        'description'=>$description,
+    	    				                        'feed_name'=>$feed_name,
+    	    				                        'feed_url'=>$link,
+    	    				                        'feed_provider'=>$feed_url,
+    	    				                        'full_content'=>true,
+    	    				                        'feed_content'=>$feed_content,
+    	    				                        'ypath'=>$ypath,
+    	    				                        'feed_image_enabler'=>$feed_image_enabler));
+    	    				}
+    	    				$count += $id['count'];
             			}
             			$update->updated = 'Feeds Added: '.$count.'<br/>';
             			$update->ID = $feed_name;
@@ -550,7 +572,7 @@
             			foreach($xml->entry as $x){
             			    $info = array();
             				
-            				$description  = $x->content;
+            				$description  = (isset($x->content))?$x->content:$x->description;
             				$title = $x->title;
             				$title = str_replace("//<![CDATA[","",$title);
                             $title = str_replace("//]]>","",$title);
@@ -574,39 +596,34 @@
         	                    $description = $content;
         				    }
         				    
-        				    $query = 'SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_title = "'.$title.'" AND '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_status!="trash"';
-        				    $p = $wpdb->get_results($query);
-        				    if(sizeof($p) < 1){
-        	    				if(!isset($full_content)){
-        	    				    $id = save_posts(array(
-        	    				                        'title'=>$title,
-        	    				                        'description'=>$description,
-        	    				                        'feed_name'=>$feed_name,
-        	    				                        'feed_url'=>$feed_url,
-        	    				                        'feed_category'=>$feed_category,
-        	    				                        'ypath'=>$ypath,
-        	    				                        'feed_image_enabler'=>$feed_image_enabler));
-        	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-        	    				} else {
-        	    				    $id = save_posts(array(
-        	    				                        'title'=>$title,
-        	    				                        'description'=>$description,
-        	    				                        'feed_name'=>$feed_name,
-        	    				                        'feed_url'=>$feed_url,
-        	    				                        'full_content'=>true,
-        	    				                        'feed_content'=>$feed_content,
-        	    				                        'ypath'=>$ypath,
-        	    				                        'feed_image_enabler'=>$feed_image_enabler));
-        	    			    	update_post_meta($id['id'],'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
-        	    				}
-        	    				$count = $id['count'];
-							}
+    	    				if(!isset($full_content)){
+    	    				    $id = save_posts(array(
+    	    				                        'title'=>$title,
+    	    				                        'description'=>$description,
+    	    				                        'feed_name'=>$feed_name,
+    	    				                        'feed_url'=>$link,
+    	    				                        'feed_provider'=>$feed_url,
+    	    				                        'feed_category'=>$feed_category,
+    	    				                        'ypath'=>$ypath,
+    	    				                        'feed_image_enabler'=>$feed_image_enabler));
+    	    				} else {
+    	    				    $id = save_posts(array(
+    	    				                        'title'=>$title,
+    	    				                        'description'=>$description,
+    	    				                        'feed_name'=>$feed_name,
+    	    				                        'feed_url'=>$link,
+    	    				                        'feed_provider'=>$feed_url,
+    	    				                        'full_content'=>true,
+    	    				                        'feed_content'=>$feed_content,
+    	    				                        'ypath'=>$ypath,
+    	    				                        'feed_image_enabler'=>$feed_image_enabler));
+    	    				}
+    	    				$count += $id['count'];
 						}
 						$update->updated = 'Feeds Added: '.$count.'<br/>';
 						$update->ID = $feed_name;
 					}
 				}
-				
 			}
 			return $update;
 		}
@@ -660,7 +677,14 @@
 		}
 		
         function save_posts($arg){
+        	global $wpdb;
             extract($arg);
+            
+            flush_feeds();
+            
+            $title = trim($title);
+            $check_title = $title;
+            $title = htmlspecialchars($title);
             
             $post = array(
 					'post_title'=>$title,
@@ -670,42 +694,69 @@
 					'post_status'=>'publish',
 					'post_type'=>'feeds'
 				);
-			$id = wp_insert_post($post);
 			
-			if(isset($feed_image_enabler) && $feed_image_enabler != ''){
-				get_post_image($id,$description,$feed_url);
-			}
+			error_reporting(E_ALL);
+			ini_set("display_errors", 1);
 			
-			++$count;
-			if(!isset($full_content) && !isset($full_image_enabler)){
-				update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category);
-			} else if(isset($full_content) && isset($full_image_enabler)) {
-				update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content.'|'.$full_image_enabler);
-			} else if(isset($full_content)){
-			update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|full-content|'.$feed_content);
+			global $post_type;
+			$post_type = 'feeds';
+			
+			$query = $wpdb->get_results('SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_title="'.$title.'" AND '.$wpdb->posts.'.post_status != "trash"');
+			$testing = $wpdb->get_results('SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_title="'.$check_title.'" AND '.$wpdb->posts.'.post_status != "trash"');
+			
+			if(sizeof($query) < 1){
+    			$id = wp_insert_post($post);
+    			
+    			if(isset($feed_image_enabler) && $feed_image_enabler != ''){
+    				get_post_image($id,$description,$feed_url);
+    			}
+    			
+    			update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_provider.'|'.$feed_category);
+    			
+    			$p = get_post_meta($id,'tw_rss_feed_options');
+    			
+    			$total = $wpdb->get_results('SELECT * FROM '.$wpdb->posts.' WHERE '.$wpdb->posts.'.post_type="feeds" AND '.$wpdb->posts.'.post_title="'.$title.'"');
+    			
+    			$deleted = remove_duplicated_feeds($testing);
+    			return array('id'=>$id,'count'=>1,'deleted'=>$deleted);
 			} else {
-				update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_url.'|'.$feed_category.'|'.$feed_image_enabler);
+				return false;
 			}
-			return array('count'=>$count,'id'=>$id);
         }
-       	
-       	function save_feed_meta( $post_id ) { 
-			global $post;
-			/*
-            * In production code, $slug should be set only once in the plugin,
-            * preferably as a class property, rather than in each function that needs it.
-            */
-            $slug = 'feeds';
-            
-            if ( $slug != $post->post_type ) {
-                return;
-            }
-            
-            foreach($_POST as $k=>$p){
-				delete_post_meta($post_id,$k);
-            }
+        
+        function remove_duplicated_feeds($query,$all_flag=false){
+        	$deleted = 0;
+        	$start = 1;
+        	
+        	if($all_flag){
+        		$start = 0;
+        	}
+        	
+        	for($i = $start; $i < sizeof($query); ++$i){
+				++$deleted;
+				wp_delete_post($query[$i]->ID);
+			}
+			return $deleted;
         }
-        add_action( 'save_post', 'save_feed_meta');
+        
+        function flush_feeds(){
+        	$feeds = new WP_Query(array('post_type'=>'feeds','posts_per_page'=>-1));
+        	$feed_cache = array();
+        	
+        	foreach($feeds->posts as $f){
+        		$s = new stdClass();
+        		$s->ID = $f->ID;
+        		$feed_cache[$f->post_title][] = $s;
+        	}
+        	
+        	$count = 0;
+        	foreach($feed_cache as $k=>$f){
+        		if(sizeof($f) > 1){
+        			$count += remove_duplicated_feeds($f);
+        		}
+        	}
+        	return $count;
+        }
         
         function feed_searches($args = array()){
             $query = 'post_type=feeds';

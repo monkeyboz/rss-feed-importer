@@ -28,7 +28,7 @@
     ?>
     <div class="image-holder">
         <div class="img-tag-holder"><img src="<?php echo wp_get_attachment_image_src($j[0])[0]; ?>"/></div>
-        <div>Delete <input type="checkbox" name="<?php echo $k; ?>" value="<?php echo $k; ?>"/></div>
+        <div>Delete <input type="checkbox" name="tw_images[<?php echo $k; ?>]" value="<?php echo $k; ?>"/></div>
     </div>
     <?php 
         }

@@ -10,14 +10,16 @@ class Layout{
     
     //constructor for the layout function, used for various information gathering and setting up
     //numerous other information used for various other html layout compositions
-    public function __construct($args){
-        extract($args);
-        $queryString = "post_type=".$post;
-        if(isset($num)){
-            $queryString .= '&post_per_page='.$num;
+    public function __construct($args = null){
+        if($args != null){
+            extract($args);
+            $queryString = "post_type=".$post;
+            if(isset($num)){
+                $queryString .= '&post_per_page='.$num;
+            }
+            $this->info = new WP_Query($queryString);
+            $this->post_type = $post;
         }
-        $this->info = new WP_Query($queryString);
-        $this->post_type = $post;
     }
     //get public function that allows for information to be passed through to various other modules when needed
     //there are numerous options in this function to allow returning information to numerous modules and other
@@ -34,6 +36,22 @@ class Layout{
   	    $json = $this->getJSON();
   	    $json = json_decode($json,true);
         $this->createXML($json);
+  	}
+  	
+  	public function convertXML($string,$array=array()){
+  		if(sizeof($array) < 1){
+  			$array = explode("\r\n", $string);
+  		}
+  		foreach($array as $a){
+  			echo $a.'<br/>';
+  			/*if(preg_match('/\//i',$a)){
+  				echo $a.'<br/>';
+  			} else {
+  				preg_match_all('/\<(.*?)?\>(.*?)(\<(.*?)?\>)/i',$a,$t);
+  				print '<pre>'.print_r($t,true).'</pre>';
+  			}*/
+  		}
+  	    //$this->convertXML($string);
   	}
   	public function createXML($json,$string=""){
   	    if(is_array($json)){
