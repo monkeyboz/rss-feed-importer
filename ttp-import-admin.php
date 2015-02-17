@@ -4,6 +4,8 @@
 	$status_str = '';
 	$deleted = '';
 	
+	//print '<pre>'.print_r(_get_cron_array(),true).'</pre>';
+	
 	//tw_create_rss_feed();
 	if(isset($_POST['remove'])){
 	    $deleted = '<div class="total-post-deleted">Total Articles deleted '.flush_feeds().'</div>';
@@ -205,6 +207,97 @@
         color: #ff0000;
         font-size: 11px;
     }
+    input[name="submit"] {
+		background: #93F56F;
+		border-radius: 10px;
+		border: none;
+		text-transform: uppercase;
+		padding: 10px;
+		color: #545454;
+		margin-top: 10px;
+		box-shadow: 2px 2px 0px #545454;
+	}
+	
+	input[name="get-content"] {
+		background: #CF5300;
+		color: #fff;
+	}
+	
+	input {
+		padding: 10px;
+		font-size: 15px;
+		border: none;
+	}
+	
+	select {
+		padding: 20px;
+		font-size: 15px;
+		border: none;
+	}
+	
+	.header {
+		clear: both;
+	}
+	
+	.header>div {
+		float: left;
+		width: 25%;
+	}
+	
+	.layout {
+		clear: both;
+	}
+	
+	.row {
+		clear: both;
+	}
+	
+	.row>div {
+		float: left;
+		width: 25%;
+	}
+	
+	.header {
+		background: #000;
+		color: #fff;
+		padding: 10px;
+		height: 20px;
+		margin-top: 15px;
+	}
+	#clicking{
+	    margin: 20px 0px;
+	}
+	#clicking input{
+	    border-radius: 10px;
+	    box-shadow: 2px 2px 0px rgba(0,0,0,.5);
+	}
+	#content-div {
+		clear: both;
+		width: 90%;
+		margin-bottom: 10px;
+	}
+	.full-content{
+        background: #000;
+        padding: 10px;
+        margin-top: 10px;
+    }
+    .categories{
+        background: #545454;
+        padding: 5px;
+        color: #fff;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-size: 10px;
+    }
+    .expander .button{
+        background: #fff;
+        width: 100%;
+        margin: 10px 0px;
+        border: none;
+        color: #000;
+        font-weight: bold;
+        font-size: 14px;
+    }
 </style>
 <div style="padding: 10px;">
 	<div>
@@ -212,8 +305,7 @@
 		<?php echo $status_str; ?>
 	</div>
 	<h1>RSS Feed Importer</h1>
-	<?php advertisements(); ?>
-
+	<?php basic_advertisements(); ?>
 	<form action="" method="POST" id="rss-function">
 		<div class="feed-hint">
 			<b>Hint of the day:</b> <?php echo hints(); ?>
@@ -236,120 +328,23 @@
 				<div>Feed URL <span class="error"><?php echo @$validate['feed_url']['error']; ?></span></div>
 				<div>
 					<input type="text" name="feed_url"
-						value="<?php echo @$feed_url; ?>" />
+						value="<?php echo @$feed_url; ?>" id="feed_url"/>
 				</div>
 			</div>
 			<div class="clear"></div>
 		</div>
-		<div>
-		    <div class="content-display"></div>
-		    <div class="full-content">
-		        Show Full Content
-		    </div>
+		<div class="categories">
+		    <?php echo get_category_hints(); ?>
 		</div>
 		<div>
 			<div style="background: #545454; margin-top: 20px; border-radius: 10px; color: #fff; padding: 10px;">Feed Image Enabler (download up to 2 images from feed | may be slow on some servers) <input type="checkbox" name="feed_image_enabler" <?php if(isset($feed_image_enabler) && sizeof($feed_image_enabler) > 0) echo 'checked'; ?>/></div>
 		</div>
-</div>
-<script>
-    var click = document.getElementById('clicking');
-    click.onclick = function(){
-        window.submit();
-        return false;
-    }
-    var fullcontent = document.getElementsByClassName('full-content');
-    fullcontent[0].onclick = function (vars){
-    	var content = document.getElementsByClassName('content-display');
-    	content[0].innerHTML;
-    }
-</script>
-<style>
-#content-div {
-	clear: both;
-	width: 90%;
-	margin-bottom: 10px;
-}
-</style>
-<div id="content-div">
-	<div>Content Div</div>
-	<div id="tw-content-layout"></div>
-	<div>
-		<input type="hidden" name="feed_content" id="feed-content"
-			value="<?php echo @$feed_content; ?>" />
-	</div>
-	<input type="submit" value="Get Content" name="get-content" />
 </div>
 <div style="clear: both;">
 	<div>
 		<input id="savefeed" type="submit" name="submit" value="Save Feed" />
 	</div>
 </div>
-<style>
-input[name="submit"] {
-	background: #93F56F;
-	border-radius: 10px;
-	border: none;
-	text-transform: uppercase;
-	padding: 10px;
-	color: #545454;
-	margin-top: 10px;
-	box-shadow: 2px 2px 0px #545454;
-}
-
-input[name="get-content"] {
-	background: #CF5300;
-	color: #fff;
-}
-
-input {
-	padding: 10px;
-	font-size: 15px;
-	border: none;
-}
-
-select {
-	padding: 20px;
-	font-size: 15px;
-	border: none;
-}
-
-.header {
-	clear: both;
-}
-
-.header>div {
-	float: left;
-	width: 25%;
-}
-
-.layout {
-	clear: both;
-}
-
-.row {
-	clear: both;
-}
-
-.row>div {
-	float: left;
-	width: 25%;
-}
-
-.header {
-	background: #000;
-	color: #fff;
-	padding: 10px;
-	height: 20px;
-	margin-top: 15px;
-}
-#clicking{
-    margin: 20px 0px;
-}
-#clicking input{
-    border-radius: 10px;
-    box-shadow: 2px 2px 0px rgba(0,0,0,.5);
-}
-</style>
 </form>
 <?php
     if(!class_exists('WP_List_Table')){
@@ -399,7 +394,52 @@ select {
 </div>
 <?php advertisements(); ?>
 <script>
-	var fullcontent = document.getElementById('full_content');
+	function animate(obj,timeout,open){
+		var table = obj.parentNode.getElementsByClassName('table-holder')[0];
+		if(open == true){
+			table.style.height = (parseInt(table.style.height.replace('px',''))-20)+'px';
+			if(table.style.height.replace('px','') < 20){
+				table.style.height = '0px';
+			}
+			if(table.style.height.replace('px','') > 0){
+				setTimeout(function(){ animate(obj,timeout,true); },1);
+			} else {
+				clearTimeout(timeout);
+			}
+		} else {
+			table.style.height = (parseInt(table.style.height.replace('px',''))+20)+'px';
+			if(table.style.height.replace('px','') < table.getElementsByTagName('div')[0].offsetHeight){
+				setTimeout(function(){ animate(obj,timeout,false); },1);
+			} else {
+				clearTimeout(timeout);
+			}
+		}
+	}
+	
+	var expander_show = function(obj){
+		this.obj = obj;
+		
+		this.obj.getElementsByClassName('button')[0].onclick = function(el){
+			var display = el.target.parentNode.getElementsByClassName('table-holder')[0];
+			display.style.overflow = 'hidden';
+			display.style.height = display.offsetHeight+'px';
+			
+			if(display.style.height.replace('px','') > 0){
+				animate(el.target,500,true);
+			} else {
+				animate(el.target,500,false);
+			}
+			return false;
+		}
+	}
+	
+	var info = [];
+	for(i = 0; i < document.getElementsByClassName('expander').length; ++i){
+		document.getElementsByClassName('expander')[i].getElementsByClassName('table-holder')[0].style.overflow = 'hidden';
+		document.getElementsByClassName('expander')[i].getElementsByClassName('table-holder')[0].style.height = '0px';
+		info[i] = new expander_show(document.getElementsByClassName('expander')[i]);
+	}
+	var fullcontent = document.getElementById('full-content');
 	document.getElementById('content-div').style.display = 'none';
 	fullcontent.onclick = function(){
 		if(document.getElementById('content-div').style.display == 'none'){
@@ -421,9 +461,11 @@ select {
 		return false;
 	}
 	
-	var l = document.getElementById('rss-function').getElementsByTagName('input')[4];
-	l.onclick = function(){ getLayout(document.getElementById('rss-function').getElementsByTagName('input')[1].value); return false; }
-	alert(l.getAttribute('name'));
+	var l = document.getElementById('submit-content');
+	l.onclick = function(){ 
+	    getLayout(document.getElementById('feed_url').getAttribute('value')); 
+	    return false;
+	}
 	
 	function createCORSRequest(method, url) {
 	  if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -431,7 +473,7 @@ select {
 	  } else {// code for IE6, IE5
 	  	xhr=new ActiveXObject("Microsoft.XMLHTTP");
 	  }
-	  xhr.open(method, '<?php echo plugins_url().'/rss-feeds/curl_functions.php?url='; ?>'+url,true);
+	  xhr.open(method, '<?php echo plugins_url().'/rss-feed-importer/curl_functions.php?url='; ?>'+url,true);
 	  return xhr;
 	}
 	
@@ -449,20 +491,22 @@ select {
 	
 	function StringToXML(oString) {
 		//code for IE
-		if (window.ActiveXObject) {
-			var oXML = new ActiveXObject("Microsoft.XMLDOM"); oXML.loadXML(oString);
-			return oXML;
-		}
-		// code for Chrome, Safari, Firefox, Opera, etc.
-		else {
-			return (new DOMParser()).parseFromString(oString, "text/xml");
-		}
+		if (window.DOMParser){
+            parser=new DOMParser();
+            xmlDoc=parser.parseFromString(oString,"text/xml");
+        } else {
+            xmlDoc=new ActiveXObject("Microsoft.XMLDOM");
+            xmlDoc.async=false;
+            xmlDoc.loadXML(oString);
+        }
+        return xmlDoc;
 	}
 	
 	function fetch_options(xmlhttp,type){
 		if(type == 'initial'){
 			var lay = document.getElementById('tw-content-layout');
 			xml = StringToXML(xmlhttp.responseText);
+			alert(xml.getElementsByTagName('title').length);
 			lay.innerHTML = xml.getElementsByTagName('link')[2].innerHTML;
 			httpGet(encodeURIComponent(xml.getElementsByTagName('link')[2].innerHTML),'finish');
 		} else {

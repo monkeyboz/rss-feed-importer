@@ -30,6 +30,14 @@
     	$selected_query = substr($selected_query,0,-1);
     }
     
+    $t = new stdClass();
+    if($_GET['feed_category']){
+        $t = get_category($_GET['feed_category']);
+        $selected_query = 'category_name='.$t->slug;
+    }
+    
+    $selected_query = 'post_type=feeds&'.$selected_query;
+    
     function current_page_url() {
     	$pageURL = 'http';
     	if( isset($_SERVER["HTTPS"]) ) {
@@ -44,24 +52,59 @@
     	return $pageURL;
     }
 ?>
-<h1>Feed List <?php if(isset($_GET['selected_feed'])){ echo '- '.$selected_feed['feed_name']; } ?></h1>
+<style>
+    .double{
+        background: #121212;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    .double input, .double select{
+        border: none;
+        padding: 10px;
+        height: 45px;
+        font-size: 15px;
+        border-radius: 5px;
+    }
+    .double input{
+        background: #ffa500;
+        color: #000;
+    }
+</style>
+<h1>Feed List <?php
+    if(isset($_GET['selected_feed'])){ 
+        echo '- '.$selected_feed['feed_name']; 
+    } elseif(isset($_GET['feed_category'])) {
+        echo get_the_category_by_ID($_GET['feed_category']);
+    }?></h1>
 <?php advertisements(); ?>
-<form action="" method="GET">
-    <select id="selected_feeds" name="selected_feed">
-        <option>Select A Feed From The List Below</option>
-        <?php
-        foreach($feeds as $f){
-        	$selected = '';
-        	if($f['name'] == $selected_feed['feed_name']){
-        		$selected = 'selected';
-        	}
-            echo "<option value='".$f['val']."' ".$selected.">".$f['name']."</option>";
-        }
-        ?>
-    </select>
-    <input type="hidden" name="page" value="<?php echo $_GET['page']; ?>"/>
-    <input type="submit" name="submit" value="submit"/>
-</form>
+<div class="double">
+    <div style="width: 425px; float: left;">
+        <form action="" method="GET">
+            <select id="selected_feeds" name="selected_feed">
+                <option>Select A Feed From The List Below</option>
+                <?php
+                foreach($feeds as $f){
+                	$selected = '';
+                	if($f['name'] == $selected_feed['feed_name']){
+                		$selected = 'selected';
+                	}
+                    echo "<option value='".$f['val']."' ".$selected.">".$f['name']."</option>";
+                }
+                ?>
+            </select>
+            <input type="hidden" name="page" value="<?php echo $_GET['page']; ?>"/>
+            <input type="submit" name="submit" value="submit"/>
+        </form>
+    </div>
+    <div style="width: 300px; float: left;">
+        <form action="" method="GET">
+        	<?php wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'feed_category', 'hierarchical' => true, 'selected'=>$t->ID)); ?>
+            <input type="hidden" name="page" value="<?php echo $_GET['page']; ?>"/>
+            <input type="submit" name="submit" value="submit"/>
+        </form>
+    </div>
+    <div style="clear: both;"></div>
+</div>
 <?php
     if(!class_exists('WP_List_Table')){
         require_once( ABSPATH . 'wp-admin/includes/class-wp-list-table.php' );
@@ -71,14 +114,14 @@
     $layout = new Table_Creator();
     $layout->process_bulk_action();
     
-    $query = query_feed_group($selected_query);
+    $query = new WP_Query($selected_query);
     
     $layout->getFeeds($query);
     $layout->prepare_items();
 ?>
 <form id="feeds-filter" method="get">
-            <!-- For plugins, we also need to ensure that the form posts back to our current page -->
-            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+    <!-- For plugins, we also need to ensure that the form posts back to our current page -->
+    <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
 <?php
         $layout->display();
 ?>

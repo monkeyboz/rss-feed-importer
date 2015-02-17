@@ -4,6 +4,16 @@
         background: #fff;
         padding: 10px;
     }
+    .layout{
+        background: #ffa500;
+        padding: 5px;
+        border-radius: 5px;
+        color: #fff;
+    }
+    .layout a{
+        color: #fff;
+        text-decoration: none;
+    }
     form{
         margin-top: 20px;
     }
@@ -28,8 +38,10 @@
     <input type="submit" value="submit" name="submit">
 </form>
 
+<?php //check_social_posts(); ?>
+
 <h2>Impressions Report (temporary cleared <?php echo get_option('tw_schedule_event'); ?>)</h2>
-<div><a href="admin.php?page=tw_impressions">Click here</a> to view full report</div>
+<div class="layout"><a href="admin.php?page=tw_impressions" style="background: #000; color: #fff; padding: 10px;">Click here</a> to view full report</div>
 <?php
     $f = $wpdb->get_results('SELECT meta_value FROM '.$wpdb->postmeta.' WHERE meta_key LIKE "tw_rss_feed_impression"');
     //print '<pre>'.print_r($f,true).'</pre>';

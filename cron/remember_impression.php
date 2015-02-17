@@ -25,12 +25,14 @@
     if($p[0] != '' && $post->post_type != 'post'){
         if(!isset($l[0]) || $l[0] == ''){
             $f = explode('|',$p[0]);
+            $f[2] = get_cat_name($f[2]);
             $a = array('feed_name'=>$f[0],'feed_url'=>urlencode($f[1]),'feed_category'=>$f[2],'current_page'=>urlencode($currPage),'impression'=>1);
             $a = json_encode($a);
             update_post_meta($post->ID,'tw_rss_feed_impression',$a);
         } else {
             $l = $l[0];
             $f = explode('|',$p[0]);
+            $f[2] = get_cat_name($f[2]);
             if(preg_match('/{"feed_name":"'.$f[0].'","feed_url":"'.urlencode($f[1]).'","feed_category":"'.$f[2].'","current_page":"'.urlencode($currPage).'"/i',$l) == 1){
                 $l = preg_replace_callback('/({"feed_name":"'.$f[0].'","feed_url":"'.urlencode($f[1]).'","feed_category":"'.$f[2].'","current_page":"'.urlencode($currPage).'","impression":)(.*?)}/i','tw_increment',$l);
             } else {

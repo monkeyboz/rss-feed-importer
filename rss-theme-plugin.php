@@ -4,10 +4,11 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 2.0.5
+    Version: 2.0.2
     Author URI: http://www.taureanwooley.com
     */
     include_once('tw_tp-admin.php');
+    include_once('tw_widget.php');
     if (!function_exists('tw_rss_admin_actions')) {
         
         function tw_rss_admin_actions() {
@@ -63,6 +64,12 @@
         add_action('admin_menu', 'tw_rss_admin_actions');
         
         add_filter( 'widget_text', 'do_shortcode');
+        
+        // Register and load the widget
+        function tw_load_widget() {
+        	register_widget( 'tw_widget' );
+        }
+        add_action( 'widgets_init', 'tw_load_widget' );
         
         function tw_impressions(){
             include_once(plugin_dir_path( __FILE__ ).'tw_impressions.php');
@@ -170,6 +177,10 @@
 			return api_call('http://quanticpost.com/info_pull/feed_hints');
 		}
 		
+		function get_category_hints(){
+		    return api_call('http://quanticpost.com/info_pull/category_hints');
+		}
+		
 		function upload_files($url,$id,$alt="TW RSS Feed Importer"){
 			$tmp = download_url( $url );
 			$desc = $alt;
@@ -236,22 +247,11 @@
         function register_new_post_type(){
         	$array = array(
 		      'public' => true,
-		      'label'  => 'Feeds'
+		      'label'  => 'Feeds',
+		      'taxonomies'  => array('category'),
+		      'supports' => array('title','editor','author','thumbnail','excerpt','comments')
 		    );
-        	
-			/*$array = array(
-					"label"	=>	"Feeds",
-					"public"	=>	true,
-					'show_ui' => true,
-					'_builtin' => false,
-					'_edit_link' => 'post.php?post=%d',
-					'capability_type' => 'tw_feed',
-					'hierarchical' => false,
-					'rewrite' => array("slug" => "tw_feed"),
-					'query_var' => "tw_feed",
-					'taxonomies' => array('category'),
-					"supports"	=>	array("title","editor","thumbnail","excerpt"),
-			);*/
+		    
 			register_post_type('feeds',$array);
         }
        	add_action('init','register_new_post_type');
@@ -301,6 +301,17 @@
 		    <?php
 		}
 		
+		function basic_advertisements(){
+			?>
+			<div style="text-align: center;"><a href="http://www.chitika.com/publishers/apply?refid=monkeyboz"><img src="http://images.chitika.net/ref_banners/728x90_money.png" /></a></div>
+			<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+                <input type="hidden" name="cmd" value="_s-xclick">
+                <input type="hidden" name="hosted_button_id" value="TSXTKEMPLXGCN">
+                <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_buynowCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+                <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+            </form>
+		<?php }
+		
 		//sanatize arrays for previous version which creates options to use for json instead of custom string which was originally used for
 		//security purposes for certain servers whithout json_decode and json_encode enables. Serialized arrays will still be used, but json_encode
         //and json_decode will be used for unless disabled, then custom json_decode and json_encode will be used. There will be a warning if
@@ -346,13 +357,29 @@
             return $feeds;
 		}
 		
+		function update_no_meta($args){
+			extract($args);
+			
+			add_post_meta($id,$feed_name.'|'.$feed_url.'|'.$feed_category) || update_post_meta($id,$feed_name.'|'.$feed_url.'|'.$feed_category);
+		}
+		
 		function extract_info($feed_info,$args=array()){
 			extract($args);
 		    $feed_settings = new stdClass();
 		    
+		    $feed_settings->before_input = flush_feeds();
+		    
 		    $json = json_decode($feed_info,true);
 		    
 			$feed_settings = extract_feed($json,$args);
+			
+			$feed_settings->after_input = flush_feeds();
+			if(sizeof($feed_settings->after_input['no_meta']->posts) > 0){
+			    
+				foreach($feed_settings->after_input['no_meta']->posts as $b){
+					update_no_meta(array('id'=>$b->ID,'feed_name'=>$json['feed_name'],'feed_url'=>$json['feed_url'],'feed_category'=>$json['feed_category']));
+				}
+			}
 			
 			$query_string = $json['feed_name'].'|'.$json['feed_url'].'|'.$json['feed_category'];
 			
@@ -641,6 +668,29 @@
 		}
 		add_action( 'wp', 'tw_setup_schedule' );
 		
+		function check_social_posts(){
+		    if(get_option('tw_social_tokens') != ''){
+                $token = json_decode(get_option('tw_social_tokens'),true);
+                $api = json_decode(get_option('tw_auto_social_api'),true);
+                
+                foreach($api as $k=>$p){
+                    switch(key($api[$k])){
+                        case 'facebook':
+                            //echo api_call('https://graph.facebook.com/me/feed?access_token='.$token[$k]['facebook'].'&suppress_response_codes=true');
+                            break;
+                        case 'twitter':
+                            //echo api_call('https://api.twitter.com/1.1/statuses/update.json',array('status=Maybe%20he%27ll%20finally%20find%20his%20keys.%20%23peterfalk'));
+                            break;
+                        case 'google':
+                            //echo api_call('https://api.google.com/');
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+		}
+		
 		function tw_do_this_hourly() {
 			tw_create_rss_feed();
 			include_once(plugin_dir_path( __FILE__  ).'/cron/cron.php');
@@ -680,8 +730,6 @@
         	global $wpdb;
             extract($arg);
             
-            flush_feeds();
-            
             $title = trim($title);
             $check_title = $title;
             $title = htmlspecialchars($title);
@@ -694,10 +742,7 @@
 					'post_status'=>'publish',
 					'post_type'=>'feeds'
 				);
-			
-			error_reporting(E_ALL);
-			ini_set("display_errors", 1);
-			
+				
 			global $post_type;
 			$post_type = 'feeds';
 			
@@ -711,7 +756,7 @@
     				get_post_image($id,$description,$feed_url);
     			}
     			
-    			update_post_meta($id,'tw_rss_feed_options', $feed_name.'|'.$feed_provider.'|'.$feed_category);
+    			add_post_meta( $id, 'tw_rss_feed_options', $feed_name.'|'.$feed_provider.'|'.$feed_category, true ) || update_post_meta( $id, 'tw_rss_feed_options', $feed_name.'|'.$feed_provider.'|'.$feed_category);
     			
     			$p = get_post_meta($id,'tw_rss_feed_options');
     			
@@ -740,27 +785,51 @@
         }
         
         function flush_feeds(){
-        	$feeds = new WP_Query(array('post_type'=>'feeds','posts_per_page'=>-1));
-        	$feed_cache = array();
+            $feeds = new WP_Query(array('post_type'=>'feeds','posts_per_page'=>-1));
+            $feed_cache = array();
+            
+            foreach($feeds->posts as $f){
+                $s = new stdClass();
+                $s->ID = $f->ID;
+                $feed_cache[$f->post_title][] = $s;
+            }
+            
+            
+            $args = array(
+        		'post_type'		=>	'feeds',
+        		'orderby'     	=> 'meta_value',
+        	    'order'       	=> 'ASC',
+        		'posts_per_page' => -1,
+        	);
+        	$my_query = new WP_Query( $args );
         	
-        	foreach($feeds->posts as $f){
-        		$s = new stdClass();
-        		$s->ID = $f->ID;
-        		$feed_cache[$f->post_title][] = $s;
-        	}
-        	
-        	$count = 0;
-        	foreach($feed_cache as $k=>$f){
-        		if(sizeof($f) > 1){
-        			$count += remove_duplicated_feeds($f);
-        		}
-        	}
-        	return $count;
+        	$no_meta_info = array();
+            
+            foreach($my_query->posts as $p){
+                $to = get_post_meta($p->ID);
+                $data = array();
+                if(!isset($to['tw_rss_feed_options'])){
+                    $data['id'] = wp_delete_post($p->ID);
+                    $data['post_info'] = $p;
+                    $no_meta_info[] = $data;
+                }
+            }
+            
+            $count = 0;
+            foreach($feed_cache as $k=>$f){
+                if(sizeof($f) > 1){
+                    $count += remove_duplicated_feeds($f);
+                }
+            }
+            $info = array('count'=>$count,'no_meta'=>$no_meta_info);
+            
+            return $info;
         }
         
         function feed_searches($args = array()){
             $query = 'post_type=feeds';
             $options = array();
+            
             if(is_array($args)){
                 extract($args);
 				foreach($args as $k=>$a){
@@ -782,9 +851,10 @@
 			$string .= $layout->populate_layout($query->posts,$options,get_option('tw_advertising'));
 			$string = '<div id="tw-container">'.$string.'</div>';
             $string .= '<script>var container = document.getElementById("tw-container"); var iso = new Isotope( container, { itemSelector: ".content-holder", layoutMode: "masonry" });</script>';
-		    
-			
-			$string = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php').$string;
+		    if(get_option('tw_advertising') == 'true'){
+		    	$string .= '<script src="http://quanticpost.com/js/advertisement1.js"></script>';
+				$string = file_get_contents(plugin_dir_path( __FILE__ ).'/layout/advertisements.php').$string;
+		    }
             return $string;
         }
         add_shortcode('feed_searches','feed_searches');
