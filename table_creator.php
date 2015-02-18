@@ -63,7 +63,8 @@ class Table_Creator extends WP_List_Table {
                     );
                 }
             }
-            $this->total_posts = sizeof($d);
+            $this->total_posts = $data->found_posts;
+            //print '<pre>'.print_r($d,true).'</pre>';
             return $d;
         }
     
@@ -384,15 +385,12 @@ class Table_Creator extends WP_List_Table {
              */
             $total_items = $this->total_posts;
             
-            
             /**
              * The WP_List_Table class does not handle pagination for us, so we need
              * to ensure that the data is trimmed to only the current page. We can use
              * array_slice() to 
              */
             $data = array_slice($data,(($current_page-1)*$per_page),$per_page);
-            
-            
             
             /**
              * REQUIRED. Now we can add our *sorted* data to the items property, where 

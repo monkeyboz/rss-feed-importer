@@ -28,6 +28,7 @@
     	}
     	
     	$selected_query = substr($selected_query,0,-1);
+    	$selected_query = 'meta_key=tw_rss_feed_options&meta_value='.$selected_query;
     }
     
     $t = new stdClass();
@@ -36,7 +37,7 @@
         $selected_query = 'category_name='.$t->slug;
     }
     
-    $selected_query = 'post_type=feeds&'.$selected_query;
+    $selected_query = 'post_type=feeds&'.$selected_query.'&posts_per_page=-1';
     
     function current_page_url() {
     	$pageURL = 'http';

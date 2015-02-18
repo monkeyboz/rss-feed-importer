@@ -1,4 +1,4 @@
-<?php
+p<?php
 	global $wpdb;
 	
 	$status_str = '';

@@ -263,7 +263,6 @@
     	<div class="description"></div>
     </div>
     <div class="share">
-        Auto Social Posting (coming soon <a href="http://quanticpost.com/purchase" target="_blank">Donate!</a>)
         <?php echo api_call('http://quanticpost.com/socialnetworking','social_token='.get_option('tw_auto_social_api').'&social_post='.get_option('tw_social_tokens')); ?>
     </div>
    	<div id="show-information">

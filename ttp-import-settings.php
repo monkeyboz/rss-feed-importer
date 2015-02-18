@@ -38,8 +38,6 @@
     <input type="submit" value="submit" name="submit">
 </form>
 
-<?php //check_social_posts(); ?>
-
 <h2>Impressions Report (temporary cleared <?php echo get_option('tw_schedule_event'); ?>)</h2>
 <div class="layout"><a href="admin.php?page=tw_impressions" style="background: #000; color: #fff; padding: 10px;">Click here</a> to view full report</div>
 <?php
