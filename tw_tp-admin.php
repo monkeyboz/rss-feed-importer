@@ -120,9 +120,9 @@ class Layout{
             	        if($strHolder[0] == 'link'){
             	            if(strlen(strip_tags($p->post_content)) < 100){
             	                preg_match_all("/Read More:(.*)<a href='(.*)'>(.*)<\/a>/is", $p->post_content, $pa);
-            	                $template_double = str_replace('['.$strHolder[0].']', str_replace(' ','',$pa[2][0]), $template_double);
+            	                $template_double = str_replace('['.$strHolder[0].']', str_replace(' ','',$pa[2][0]), htmlspecialchars_decode($template_double));
             	            } else {
-            	                $template_double = str_replace('['.$strHolder[0].']', get_permalink($p->ID), $template_double);
+            	                $template_double = str_replace('['.$strHolder[0].']', get_permalink($p->ID), htmlspecialchars_decode($template_double));
             	            }
             	        } elseif($strHolder[0] == 'images'){
             	            $images = wp_get_attachment_url(get_post_thumbnail_id($p->ID));
@@ -137,9 +137,9 @@ class Layout{
             	        }
             	    } else {
             	        if(!isset($title_only) && sizeof($title_only) < 1){
-            	            $template_double = str_replace('['.$strHolder[0].']', substr(strip_tags($p->{$strHolder[1]}),0,$strHolder[3]).'...', $template_double);
+            	            $template_double = str_replace('['.$strHolder[0].']', substr(strip_tags($p->{$strHolder[1]}),0,$strHolder[3]).'...', htmlspecialchars_decode($template_double));
             	        } else {
-            	            $template_double = str_replace('['.$strHolder[0].']', '', $template_double);
+            	            $template_double = str_replace('['.$strHolder[0].']', '', htmlspecialchars_decode($template_double));
             	        }
             	    }
         	    }

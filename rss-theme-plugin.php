@@ -398,6 +398,14 @@
 			return $feed_settings;
 		}
 		
+		function tw_special_char_title(){
+			global $post;
+			$post->post_title = htmlspecialchars_decode($post->post_title);
+			$post->post_content = str_replace('â','"',str_replace('Â','',str_replace('â â','" - ',strtolower($post->post_content))));
+			$post->post_content = htmlspecialchars_decode($post->post_content);
+		}
+		add_filter('wp_head', 'tw_special_char_title');
+		
 		function extract_feed($arg,$settings){
 		    global $wpdb;
 		    extract($settings);
