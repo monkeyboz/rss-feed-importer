@@ -19,6 +19,7 @@ The current options are available for showing the feeds:
 3) custom feed names and custom feed categories which work in conjunction with already created categories in your wordpress sytem.
 
 == Screenshots ==
+
 1. Home Page
 2. Settings Page
 3. Feed List
@@ -35,6 +36,8 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.6.2 - Updated impressions and added hints and remote server access for code hinting.  Also made sure that the new code has most of the bugs fixed, there are several other issues that need to be addressed like the addition of full content downloading and reverse engineering layouts on the admin front-end.
+
 v.2.0.6 - Updated impressions and added hints and remote server access for code hinting.  Also made sure that the new code has most of the bugs fixed, there are several other issues that need to be addressed like the addition of full content downloading and reverse engineering layouts on the admin front-end.
 
 v.2.0.2 - Update impressions page to allow for various options that were required to clean up the impressions flow.  It now allows viewing of impressions with updates based on scheduling.
