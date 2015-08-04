@@ -36,6 +36,8 @@ Automated installation: Find on plugin in wordpress plugin search under add plug
 None at the moment
 
 == Changelog ==
+v.2.0.6.3 - checking on git updates from svn.
+
 v.2.0.6.2 - Updated impressions and added hints and remote server access for code hinting.  Also made sure that the new code has most of the bugs fixed, there are several other issues that need to be addressed like the addition of full content downloading and reverse engineering layouts on the admin front-end.
 
 v.2.0.6 - Updated impressions and added hints and remote server access for code hinting.  Also made sure that the new code has most of the bugs fixed, there are several other issues that need to be addressed like the addition of full content downloading and reverse engineering layouts on the admin front-end.
