@@ -4,7 +4,7 @@
     Plugin URI: http://www.taureanwooley.com
     Description: Plugin that allows for uploading rss-feeds into wordpress along with uploading full content from certain rss feeds when available (still in development)
     Author: Taurean Wooley
-    Version: 2.0.6.2
+    Version: 2.0.6.3
     Author URI: http://www.taureanwooley.com
     */
     include_once('tw_tp-admin.php');
