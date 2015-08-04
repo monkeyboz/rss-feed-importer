@@ -48,4 +48,4 @@ v.2.0 - Updated with listings of feeds as well as the ability to delete directly
 
 v.1.0.1 - Fixed bug with deletes and fixed issue with rss feed importer for most (if not all) rss feeds
 
-v.1.0 - Initial Installation
+v.1.0 - Initial Installation (update used for various information)
